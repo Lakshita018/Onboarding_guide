@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Plus } from 'lucide-react';
 import api from '../../api/axios';
-import Card from '../../common/Card';
-import Badge from '../../common/Badge';
-import Button from '../../common/Button';
-import Modal from '../../common/Modal';
-import LoadingSkeleton from '../../common/LoadingSkeleton';
+import Button from '../../components/common/Button';
+import Modal from '../../components/common/Modal';
+import LoadingSkeleton from '../../components/common/LoadingSkeleton';
+import AccessRequest from '../../components/employee/AccessRequest';
 
 const AccessPage = () => {
   const [requests, setRequests] = useState([]);
@@ -32,6 +29,12 @@ const AccessPage = () => {
     fetchRequests();
   }, []);
 
+  const handleOpenNewRequest = (defaultAppName = '') => {
+    setAppName(defaultAppName);
+    setReason('');
+    setModalOpen(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!appName || !reason) return;
@@ -39,7 +42,7 @@ const AccessPage = () => {
     setSubmitting(true);
     try {
       const res = await api.post('/employee/access-request', { application_name: appName, reason });
-      setRequests(prev => [res.data.request, ...prev]);
+      setRequests((prev) => [res.data.request, ...prev]);
       setModalOpen(false);
       setAppName('');
       setReason('');
@@ -54,46 +57,17 @@ const AccessPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-[#161616]">Access Requests</h1>
-          <p className="text-sm text-[#525252] mt-1">
-            Request access to software, tools, and platforms.
-          </p>
-        </div>
-        <Button icon={Plus} onClick={() => setModalOpen(true)}>New Request</Button>
+      <div>
+        <h1 className="text-xl font-bold text-[#161616]">Access Requests</h1>
+        <p className="text-sm text-[#525252] mt-1">
+          Request access to software, tools, and platforms.
+        </p>
       </div>
 
-      <Card noPadding>
-        {requests.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-sm text-[#525252]">No access requests found.</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-[#F4F4F4]">
-            {requests.map((req, i) => (
-              <motion.div
-                key={req.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: i * 0.05 }}
-                className="p-4 flex items-center justify-between hover:bg-[#F4F4F4] transition-colors"
-              >
-                <div>
-                  <h3 className="text-sm font-semibold text-[#161616]">{req.application_name}</h3>
-                  <p className="text-xs text-[#8D8D8D] mt-1 line-clamp-1 max-w-lg">{req.reason}</p>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <Badge variant={req.status} />
-                  <span className="text-[10px] text-[#8D8D8D]">
-                    {new Date(req.requested_at).toLocaleDateString()}
-                  </span>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </Card>
+      <AccessRequest
+        requests={requests}
+        onOpenNewRequest={handleOpenNewRequest}
+      />
 
       <Modal
         isOpen={modalOpen}

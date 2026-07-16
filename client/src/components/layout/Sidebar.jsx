@@ -17,7 +17,7 @@ import {
   ChevronRight,
   Cpu,
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 const EMPLOYEE_NAV = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
@@ -85,7 +85,7 @@ const Sidebar = () => {
 
   return (
     <motion.aside
-      className="bg-[#262626] text-white flex flex-col h-screen flex-shrink-0 relative z-10 border-r border-[#393939]"
+      className="hidden md:flex bg-[#262626] text-white flex-col h-screen flex-shrink-0 relative z-10 border-r border-[#393939]"
       animate={{ width: collapsed ? 64 : 240 }}
       transition={{ duration: 0.25, ease: 'easeInOut' }}
     >

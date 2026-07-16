@@ -2,7 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
-import Layout from './layout/Layout';
+import Layout from './components/layout/Layout';
 import PrivateRoute from './routes/PrivateRoute';
 import RoleRoute from './routes/RoleRoute';
 import LoadingSkeleton from './common/LoadingSkeleton';
@@ -23,6 +23,7 @@ import ChatPage from './pages/employee/ChatPage';
 // Admin pages
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminEmployeesPage from './pages/admin/EmployeesPage';
+import AdminEmployeeDetails from './pages/admin/EmployeeDetails';
 import AdminTasksPage from './pages/admin/TasksPage';
 import AdminDocumentsPage from './pages/admin/DocumentsPage';
 import AdminReportsPage from './pages/admin/ReportsPage';
@@ -66,6 +67,7 @@ function App() {
               <Route element={<RoleRoute allowedRoles={['admin']} />}>
                 <Route path="/admin" element={<LayoutWrapper><AdminDashboard /></LayoutWrapper>} />
                 <Route path="/admin/employees" element={<LayoutWrapper><AdminEmployeesPage /></LayoutWrapper>} />
+                <Route path="/admin/employees/:id" element={<LayoutWrapper><AdminEmployeeDetails /></LayoutWrapper>} />
                 <Route path="/admin/tasks" element={<LayoutWrapper><AdminTasksPage /></LayoutWrapper>} />
                 <Route path="/admin/documents" element={<LayoutWrapper><AdminDocumentsPage /></LayoutWrapper>} />
                 <Route path="/admin/reports" element={<LayoutWrapper><AdminReportsPage /></LayoutWrapper>} />

@@ -3,15 +3,17 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   CheckSquare, FileText, Key, MessageSquare,
-  ArrowRight, Cpu, AlertCircle, TrendingUp,
+  ArrowRight, Cpu, TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import api from '../../api/axios';
-import Card from '../../common/Card';
-import ProgressBar from '../../common/ProgressBar';
-import Badge from '../../common/Badge';
-import LoadingSkeleton from '../../common/LoadingSkeleton';
+import Card from '../../components/common/Card';
+import Badge from '../../components/common/Badge';
+import LoadingSkeleton from '../../components/common/LoadingSkeleton';
+import TeamInfo from '../../components/employee/TeamInfo';
+import NextRecommendedTask from '../../components/employee/NextRecommendedTask';
+import Checklist from '../../components/employee/Checklist';
 
 const StatCard = ({ icon: Icon, label, value, color, to, delay = 0 }) => (
   <motion.div
@@ -23,14 +25,14 @@ const StatCard = ({ icon: Icon, label, value, color, to, delay = 0 }) => (
       <div className="bg-white border border-[#E0E0E0] rounded-sm p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs font-medium text-[#8D8D8D] uppercase tracking-wide mb-2">{label}</p>
-            <p className="text-2xl font-bold text-[#161616]">{value}</p>
+            <p className="text-[10px] font-medium text-[#8D8D8D] uppercase tracking-wide mb-2">{label}</p>
+            <p className="text-xl font-bold text-[#161616]">{value}</p>
           </div>
-          <div className={`p-2.5 rounded-sm ${color}`}>
-            <Icon className="w-5 h-5" />
+          <div className={`p-2 rounded-sm ${color}`}>
+            <Icon className="w-4 h-4" />
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-1 text-[10px] font-medium text-[#0F62FE] opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="mt-3 flex items-center gap-1 text-[9px] font-medium text-[#0F62FE] opacity-0 group-hover:opacity-100 transition-opacity">
           View details <ArrowRight className="w-3 h-3" />
         </div>
       </div>
@@ -46,6 +48,7 @@ const EmployeeDashboard = () => {
   const [documents, setDocuments] = useState([]);
   const [recommendation, setRecommendation] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshingRec, setRefreshingRec] = useState(false);
   const [notification, setNotification] = useState(null);
 
   const fetchData = async () => {
@@ -67,6 +70,18 @@ const EmployeeDashboard = () => {
     }
   };
 
+  const handleRefreshRecommendation = async () => {
+    setRefreshingRec(true);
+    try {
+      const res = await api.get('/employee/recommendations');
+      setRecommendation(res.data.recommendations?.recommendedTasks?.[0] || null);
+    } catch (err) {
+      console.error('Failed to refresh recommendation:', err);
+    } finally {
+      setRefreshingRec(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -81,6 +96,18 @@ const EmployeeDashboard = () => {
     });
     return () => socket.off('employeeUpdated');
   }, [socket]);
+
+  const handleChecklistToggle = async (id, currentStatus) => {
+    try {
+      await api.patch(`/employee/checklist/${id}`, { completed: !currentStatus });
+      // Refetch data to update checklist preview and progress bar
+      const checklistRes = await api.get('/employee/checklist');
+      setChecklist(checklistRes.data);
+      handleRefreshRecommendation();
+    } catch (error) {
+      console.error('Failed to update checklist item:', error);
+    }
+  };
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -171,45 +198,7 @@ const EmployeeDashboard = () => {
               </Link>
             }
           >
-            {checklist.checklist.length === 0 ? (
-              <div className="text-center py-8 text-[#8D8D8D]">
-                <CheckSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">No checklist items yet.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {checklist.checklist.slice(0, 5).map((item, i) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className={`flex items-start gap-3 p-3 rounded-sm border ${
-                      item.completed ? 'bg-[#F4F4F4] border-[#E0E0E0]' : 'bg-white border-[#E0E0E0]'
-                    }`}
-                  >
-                    <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5 ${
-                      item.completed ? 'bg-[#24A148] border-[#24A148]' : 'border-[#8D8D8D]'
-                    }`}>
-                      {item.completed && (
-                        <svg className="w-full h-full text-white p-0.5" fill="currentColor" viewBox="0 0 12 12">
-                          <path d="M10 3L5 8.5 2 5.5" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round"/>
-                        </svg>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium ${item.completed ? 'text-[#8D8D8D] line-through' : 'text-[#161616]'}`}>
-                        {item.title}
-                      </p>
-                      {item.description && (
-                        <p className="text-xs text-[#8D8D8D] mt-0.5 truncate">{item.description}</p>
-                      )}
-                    </div>
-                    <Badge variant={item.priority} />
-                  </motion.div>
-                ))}
-              </div>
-            )}
+            <Checklist tasks={checklist.checklist.slice(0, 5)} onToggle={handleChecklistToggle} />
           </Card>
         </div>
 
@@ -222,9 +211,9 @@ const EmployeeDashboard = () => {
                 profile?.offer_accepted ? 'bg-[#DEFBE6]' : 'bg-[#FFF8E1]'
               }`}>
                 {profile?.offer_accepted ? (
-                  <span className="text-[#198038] text-lg">✓</span>
+                  <span className="text-[#198038] text-lg font-bold">✓</span>
                 ) : (
-                  <AlertCircle className="w-5 h-5 text-[#8A6914]" />
+                  <TrendingUp className="w-5 h-5 text-[#8A6914] rotate-90" />
                 )}
               </div>
               <div>
@@ -232,7 +221,7 @@ const EmployeeDashboard = () => {
                   {profile?.offer_accepted ? 'Offer Accepted' : 'Offer Pending'}
                 </p>
                 <p className="text-xs text-[#8D8D8D]">
-                  {profile?.offer_accepted ? 'You\'re all set!' : 'Review and accept your offer'}
+                  {profile?.offer_accepted ? "You're all set!" : 'Review and accept your offer'}
                 </p>
               </div>
             </div>
@@ -245,20 +234,15 @@ const EmployeeDashboard = () => {
             )}
           </Card>
 
-          {/* AI Recommendation */}
-          {recommendation && (
-            <Card title="AI Recommendation" subtitle="Powered by IBM watsonx">
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-[#EDF4FF] rounded-sm flex-shrink-0">
-                  <Cpu className="w-4 h-4 text-[#0F62FE]" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-[#161616]">{recommendation.title}</p>
-                  <p className="text-xs text-[#8D8D8D] mt-1">{recommendation.description}</p>
-                </div>
-              </div>
-            </Card>
-          )}
+          {/* Next Recommended Task Card */}
+          <NextRecommendedTask
+            recommendation={recommendation}
+            onRefresh={handleRefreshRecommendation}
+            loading={refreshingRec}
+          />
+
+          {/* Team Structure Info Card */}
+          <TeamInfo profile={profile} />
 
           {/* Security Note */}
           <div className="bg-[#F4F4F4] border border-[#E0E0E0] rounded-sm p-4">
