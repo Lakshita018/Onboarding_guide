@@ -1,42 +1,85 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { X } from 'lucide-react';
 
-const Modal = ({ isOpen, onClose, title, children }) => {
+const Modal = ({
+  isOpen,
+  onClose,
+  title,
+  subtitle,
+  children,
+  size = 'md',
+  footer,
+}) => {
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === 'Escape') onClose?.();
+    };
+    if (isOpen) document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (isOpen) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = '';
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
+
+  const sizes = {
+    sm: 'max-w-md',
+    md: 'max-w-xl',
+    lg: 'max-w-2xl',
+    xl: 'max-w-4xl',
+    full: 'max-w-[95vw]',
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop overlay */}
+        <>
           <motion.div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.4 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black"
           />
-
-          {/* Modal Content Drawer */}
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="bg-white border border-gray-200 w-full max-w-lg shadow-xl relative z-10 overflow-hidden"
-          >
-            <div className="px-6 py-4 border-b border-gray-150 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors text-xl font-semibold leading-none"
-              >
-                &times;
-              </button>
-            </div>
-            <div className="p-6">
-              {children}
-            </div>
-          </motion.div>
-        </div>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              className={`w-full ${sizes[size]} bg-white rounded-sm shadow-xl border border-[#E0E0E0] flex flex-col max-h-[90vh]`}
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {(title || onClose) && (
+                <div className="flex items-start justify-between px-6 py-4 border-b border-[#E0E0E0] flex-shrink-0">
+                  <div>
+                    {title && (
+                      <h2 className="text-base font-semibold text-[#161616]">{title}</h2>
+                    )}
+                    {subtitle && (
+                      <p className="text-xs text-[#8D8D8D] mt-0.5">{subtitle}</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={onClose}
+                    className="p-1.5 rounded-sm text-[#525252] hover:bg-[#F4F4F4] hover:text-[#161616] transition-colors ml-4 flex-shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+              <div className="px-6 py-5 overflow-y-auto flex-1">{children}</div>
+              {footer && (
+                <div className="px-6 py-4 border-t border-[#E0E0E0] flex items-center justify-end gap-3 flex-shrink-0">
+                  {footer}
+                </div>
+              )}
+            </motion.div>
+          </div>
+        </>
       )}
     </AnimatePresence>
   );

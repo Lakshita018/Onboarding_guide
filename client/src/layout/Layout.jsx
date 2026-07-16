@@ -1,6 +1,13 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
+
+const pageVariants = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -4 },
+};
 
 const Layout = ({ children }) => {
   return (
@@ -8,16 +15,22 @@ const Layout = ({ children }) => {
       {/* Sidebar */}
       <Sidebar />
 
-      {/* Main Content Layout */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Topbar */}
+      {/* Main area */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Topbar />
 
-        {/* Content Page Body */}
-        <main className="flex-1 overflow-y-auto p-8">
-          <div className="max-w-6xl mx-auto space-y-6">
+        {/* Scrollable content */}
+        <main className="flex-1 overflow-y-auto">
+          <motion.div
+            className="max-w-7xl mx-auto p-6 space-y-6"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+          >
             {children}
-          </div>
+          </motion.div>
         </main>
       </div>
     </div>
