@@ -63,7 +63,7 @@ const Signup = () => {
           <div className="p-2 bg-blue-600/15 rounded-lg border border-blue-500/20 text-[#0F62FE]">
             <ShieldCheck className="w-6 h-6" />
           </div>
-          <span className="font-bold text-lg tracking-wider text-slate-100 uppercase">IBM OnboardAI</span>
+          <span className="font-bold text-lg tracking-wider text-slate-100 uppercase">IBM Onboarding</span>
         </div>
 
         {/* Welcome Text Section */}
@@ -119,7 +119,7 @@ const Signup = () => {
           {/* Header Mobile logo */}
           <div className="md:hidden flex items-center gap-2 mb-6">
             <ShieldCheck className="w-8 h-8 text-[#0F62FE]" />
-            <span className="font-extrabold text-xl tracking-wider uppercase">IBM OnboardAI</span>
+            <span className="font-extrabold text-xl tracking-wider uppercase">IBM Onboarding</span>
           </div>
 
           <div className="space-y-2">

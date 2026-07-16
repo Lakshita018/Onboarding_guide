@@ -108,7 +108,7 @@ const Sidebar = () => {
               className="overflow-hidden"
             >
               <span className="text-sm font-bold text-white tracking-tight whitespace-nowrap">
-                IBM OnboardAI
+                IBM Onboarding
               </span>
             </motion.div>
           )}

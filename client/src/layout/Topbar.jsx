@@ -32,7 +32,7 @@ const Topbar = () => {
   const location = useLocation();
   const dropdownRef = useRef(null);
 
-  const pageTitle = PAGE_TITLES[location.pathname] || 'IBM OnboardAI';
+  const pageTitle = PAGE_TITLES[location.pathname] || 'IBM Onboarding';
   const initials = user?.name
     ?.split(' ')
     .map((n) => n[0])
@@ -56,7 +56,7 @@ const Topbar = () => {
       {/* Page Title */}
       <div>
         <h1 className="text-sm font-semibold text-[#161616]">{pageTitle}</h1>
-        <p className="text-[10px] text-[#8D8D8D]">IBM OnboardAI Platform</p>
+        <p className="text-[10px] text-[#8D8D8D]">IBM Onboarding Platform</p>
       </div>
 
       {/* Right Controls */}

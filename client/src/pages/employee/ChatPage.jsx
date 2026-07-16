@@ -84,7 +84,7 @@ const ChatPage = () => {
               <div className="w-12 h-12 bg-[#EDF4FF] rounded-full flex items-center justify-center mb-4">
                 <Cpu className="w-6 h-6 text-[#0F62FE]" />
               </div>
-              <h3 className="text-sm font-semibold text-[#161616]">IBM OnboardAI Assistant</h3>
+              <h3 className="text-sm font-semibold text-[#161616]">IBM Onboarding Assistant</h3>
               <p className="text-xs text-[#8D8D8D] mt-2 max-w-sm">
                 I can help you with tasks, document requirements, IT setup, and general IBM onboarding questions.
               </p>
