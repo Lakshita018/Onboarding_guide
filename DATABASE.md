@@ -278,18 +278,33 @@ CREATE INDEX idx_chat_timestamp          ON chat_logs(timestamp);
 
 ## Seed Data Strategy
 
-On first run (dev mode), the server seeds:
+Run `npm run seed` from the `server/` directory to populate all demo data.
 
-1. **Admin user**: `admin@onboardai.com` / `Admin@123`
-2. **Demo employee**: `jane.doe@onboardai.com` / `Employee@123`
-3. **Default checklist** for demo employee covering all 5 onboarding stages
-4. **Sample tasks** assigned by admin to demo employee
+**Phase 1 demo accounts (`server/seed/seed.js`):**
 
-Seed script: `server/db/seed.js`
+| Role | Email | Password | Onboarding Stage |
+|---|---|---|---|
+| Admin | admin@ibm.com | Admin123 | — |
+| Employee | aarav@ibm.com | Employee123 | PRE_JOINING — 10 pending checklist items, no docs |
+| Employee | priya@ibm.com | Employee123 | ORIENTATION — 5/10 done, 2 docs, 2 access requests |
+| Employee | rahul@ibm.com | Employee123 | FULLY_PRODUCTIVE — 12/12 done, 3 docs verified |
+
+Legacy seed (`server/db/seed.js`) uses `admin@onboardai.com` / `Admin@123` and is kept for reference only.
 
 ---
 
 ## Migration Strategy
 
-- Phase 1: Schema applied via `server/db/schema.sql` run at startup
-- Future: migrate to a migration tool (e.g., `db-migrate` or `Knex migrations`)
+- `npm run migrate` — applies `server/db/schema.sql` (idempotent, `IF NOT EXISTS`)
+- Schema is PostgreSQL-dialect; automatically converted to SQLite on fallback
+- Future: migrate to Knex migrations for versioned schema changes
+
+---
+
+## Phase 1 Schema Changes
+
+The `checklist_items` table gained a `created_at` column (added during Phase 1 to fix SQLite ORDER BY compatibility):
+
+```sql
+created_at TIMESTAMP NOT NULL DEFAULT NOW()
+```

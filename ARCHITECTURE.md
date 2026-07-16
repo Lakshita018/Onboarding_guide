@@ -248,8 +248,19 @@ FULLY_PRODUCTIVE
 
 | Event | Direction | Payload |
 |---|---|---|
+| `joinRoom` | Client → Server | `{ employeeId }` |
 | `employeeUpdated` | Server → Employee | `{ type, data }` |
 | `taskAssigned` | Server → Employee | `{ task }` |
 | `documentApproved` | Server → Employee | `{ document }` |
 | `notification` | Server → Employee | `{ title, message, type }` |
-| `adminAlert` | Server → Admin | `{ employeeId, event }` |
+| `adminAlert` | Server → Admin room | `{ employeeId, event }` |
+
+---
+
+## Phase Status
+
+| Phase | Status |
+|---|---|
+| Phase 0 — Foundation | ✅ Complete |
+| Phase 1 — Backend (models, routes, seed, services) | ✅ Complete |
+| Phase 2 — Frontend Foundation | ⏳ Next |

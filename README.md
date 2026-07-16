@@ -42,12 +42,22 @@ npm run dev
 
 Client starts on `http://localhost:5173`.
 
-### 3 — Default Credentials (dev seed)
+### 3 — Seed demo data
 
-| Role | Email | Password |
-|---|---|---|
-| Admin | admin@onboardai.com | Admin@123 |
-| Employee | jane.doe@onboardai.com | Employee@123 |
+```bash
+cd server
+npm run migrate   # create all tables
+npm run seed      # populate demo accounts
+```
+
+### 4 — Default Credentials
+
+| Role | Email | Password | Stage |
+|---|---|---|---|
+| Admin | admin@ibm.com | Admin123 | — |
+| Employee | aarav@ibm.com | Employee123 | PRE_JOINING |
+| Employee | priya@ibm.com | Employee123 | ORIENTATION |
+| Employee | rahul@ibm.com | Employee123 | FULLY_PRODUCTIVE |
 
 ---
 
@@ -106,7 +116,7 @@ The frontend never calls IBM APIs directly. Swap the implementation inside the s
 | Phase | Title | Status |
 |---|---|---|
 | 0 | Foundation — architecture, DB plan, context | ✅ Done |
-| 1 | Backend — Express, DB, auth, models, routes | ⏳ |
+| 1 | Backend — Express, DB, models, routes, seed | ✅ Done |
 | 2 | Frontend — Vite, Tailwind, router, layout, auth pages | ⏳ |
 | 3 | Employee Dashboard + Checklist + Documents | ⏳ |
 | 4 | Admin Dashboard + Employee Management | ⏳ |
