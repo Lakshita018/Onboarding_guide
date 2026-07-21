@@ -27,6 +27,7 @@ import AdminEmployeeDetails from './pages/admin/EmployeeDetails';
 import AdminTasksPage from './pages/admin/TasksPage';
 import AdminDocumentsPage from './pages/admin/DocumentsPage';
 import AdminReportsPage from './pages/admin/ReportsPage';
+import AdminAccessRequestsPage from './pages/admin/AccessRequestsPage';
 
 import './index.css';
 
@@ -71,6 +72,7 @@ function App() {
                 <Route path="/admin/tasks" element={<LayoutWrapper><AdminTasksPage /></LayoutWrapper>} />
                 <Route path="/admin/documents" element={<LayoutWrapper><AdminDocumentsPage /></LayoutWrapper>} />
                 <Route path="/admin/reports" element={<LayoutWrapper><AdminReportsPage /></LayoutWrapper>} />
+                <Route path="/admin/access-requests" element={<LayoutWrapper><AdminAccessRequestsPage /></LayoutWrapper>} />
               </Route>
             </Route>
 

@@ -1,0 +1,129 @@
+================================================================
+IBM WATSONX CHALLENGE — SUBMISSION FORM CONTENT
+Project: IBM Onboarding Platform
+================================================================
+
+WHICH PATH ARE YOU SUBMITTING TO?
+----------------------------------
+Path 1: Built during the challenge
+
+
+DO YOU WANT THIS SUBMISSION TO BE SENT TO JUDGING?
+----------------------------------------------------
+Yes
+
+
+JUDGING COMMITTEE
+------------------
+Select whichever committee covers productivity / HR tech tools
+
+
+================================================================
+SOLUTION STATEMENT (500 words or less)
+================================================================
+
+IBM Onboarding Platform is an AI-powered employee onboarding portal
+that replaces fragmented, manual onboarding processes with a unified,
+intelligent digital experience. New joiners at IBM are often overwhelmed
+by disjointed communication — scattered emails, manual document
+submissions, unclear task priorities, and no single source of truth
+for onboarding information.
+
+Our solution provides a role-based web portal where employees can track
+their full onboarding journey — from offer acceptance to IT setup —
+while admins (HR managers) get a real-time dashboard to manage, assign,
+and verify onboarding tasks across their entire cohort.
+
+The centerpiece is an IBM Granite-powered AI assistant that answers
+personalised onboarding questions in natural language — joining date,
+manager details, office location, HR contacts, pending documents, W3ID
+setup, and more — by sourcing context directly from the employee's live
+Firestore profile. This eliminates the need for new joiners to hunt
+through emails or wait for HR responses.
+
+Built entirely during the challenge period using IBM watsonx, Firebase,
+and Cloudinary, the platform demonstrates how AI can reduce friction at
+one of the most critical moments in an employee's IBM career.
+
+
+================================================================
+TECHNICAL STATEMENT (500 words or less)
+================================================================
+
+The platform is a full-stack application with a React 19 + Vite frontend
+and a Node.js + Express backend. Authentication is handled end-to-end via
+Firebase Auth — the client authenticates with Firebase and sends the ID
+token as a Bearer token on every API request, which the backend verifies
+using the Firebase Admin SDK. User and employee data is stored in Cloud
+Firestore across 7 collections: users, employees, documents, checklists,
+tasks, accessRequests, and chatLogs.
+
+The AI chatbot follows a RAG-lite architecture. On each chat request,
+the backend fetches the authenticated employee's complete Firestore
+profile — joining date, department, manager, buddy, OS type, pending
+documents, tasks, and access requests — and injects it as structured
+context into an IBM Granite prompt via the watsonx.ai REST API. Granite
+generates a personalised, context-aware response which is then saved to
+chatLogs and returned to the client.
+
+Document uploads go directly to Cloudinary via upload_stream (no disk
+writes), with only the Cloudinary URL stored in Firestore. Real-time
+notifications between admin actions and employee dashboards are delivered
+via Socket.IO WebSocket rooms keyed by employee UID. The frontend enforces
+role-based access via React Router guards, mirroring the server-side
+roleMiddleware checks. The entire system requires zero SQL databases —
+Firestore handles all persistence with automatic scaling.
+
+
+================================================================
+SOLUTION IMPACT(S) — Check all that apply
+================================================================
+
+[x] Simplify personal/team process(es)
+[x] Reduce time and/or manual effort to complete routine task(s)
+[x] Improve the accuracy and consistency of output(s)
+[x] Reduce time and effort accessing information
+[x] Innovation and exploration of new features
+[ ] Reduce operational risk/ensure compliance
+[ ] Speed up product/offering development
+[ ] Improve code quality/maintenance
+[ ] Other
+
+
+================================================================
+TIME TO COMPLETE
+================================================================
+
+Before IBM Bob (and/or ICA)?  :  40  hours
+With IBM Bob (and/or ICA)?    :  18  hours
+
+
+================================================================
+HOW OFTEN DO YOU DO THIS TASK?
+================================================================
+
+One-time / Per new joiner onboarding cycle
+
+
+================================================================
+ATTACHMENT — PITCH FILE
+================================================================
+
+Required: mp4 video (< 100MB, 3 minutes) OR PDF (< 10MB, 3 pages)
+
+Suggested demo video flow:
+  1. Login as employee (aanya.sharma@ibm.com)
+  2. Show employee dashboard — progress bar, checklist, offer status
+  3. Open AI Assistant — click the 3 prompt chips to show responses
+  4. Ask: "When is my joining date?" — show rich Granite-style response
+  5. Ask: "Who is my manager and buddy?" — show all 3 contacts
+  6. Ask: "What is my job location and HR contact?" — show full address
+  7. Show Documents page — upload flow + verification status
+  8. Show Learning page — click a Your Learning link (opens IBM portal)
+  9. Login as admin (lakshitagupta@ibm.com)
+  10. Show admin dashboard — stats, onboarding funnel
+  11. Assign a task to an employee — show real-time notification on employee side
+
+================================================================
+END OF SUBMISSION CONTENT
+================================================================

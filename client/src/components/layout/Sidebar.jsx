@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Cpu,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -30,11 +31,12 @@ const EMPLOYEE_NAV = [
 ];
 
 const ADMIN_NAV = [
-  { label: 'Dashboard', icon: LayoutDashboard, to: '/admin' },
-  { label: 'Employees', icon: Users, to: '/admin/employees' },
-  { label: 'Tasks', icon: ClipboardList, to: '/admin/tasks' },
-  { label: 'Documents', icon: FolderOpen, to: '/admin/documents' },
-  { label: 'Reports', icon: BarChart2, to: '/admin/reports' },
+  { label: 'Dashboard',        icon: LayoutDashboard, to: '/admin' },
+  { label: 'Employees',        icon: Users,            to: '/admin/employees' },
+  { label: 'Tasks',            icon: ClipboardList,    to: '/admin/tasks' },
+  { label: 'Documents',        icon: FolderOpen,       to: '/admin/documents' },
+  { label: 'Access Requests',  icon: ShieldCheck,      to: '/admin/access-requests' },
+  { label: 'Reports',          icon: BarChart2,        to: '/admin/reports' },
 ];
 
 const NavItem = ({ item, collapsed }) => {
