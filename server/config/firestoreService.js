@@ -310,6 +310,11 @@ const Tasks = {
     return docToObj(await Tasks.col().doc(id).get());
   },
 
+  async update(id, fields) {
+    await Tasks.col().doc(id).update(fields);
+    return docToObj(await Tasks.col().doc(id).get());
+  },
+
   async countByStatus(status) {
     const snap = await Tasks.col().where('status', '==', status).count().get();
     return snap.data().count;
@@ -391,6 +396,37 @@ const ChatLogs = {
   },
 };
 
+// ─── SIGNATURES ───────────────────────────────────────────────────────────────
+
+const Signatures = {
+  col: () => db.collection('signatures'),
+
+  async create({ employee_id, document_id, signature_data_url }) {
+    const data = {
+      employee_id,
+      document_id: document_id || null,
+      signature_data_url,
+      signed_at: now(),
+    };
+    const ref = await Signatures.col().add(data);
+    return { id: ref.id, ...data };
+  },
+
+  async findByEmployeeId(employeeId) {
+    const snap = await Signatures.col().where('employee_id', '==', employeeId).get();
+    const arr = snapToArray(snap);
+    arr.sort((a, b) => (b.signed_at || '') > (a.signed_at || '') ? 1 : -1);
+    return arr;
+  },
+
+  async findByDocumentId(documentId) {
+    const snap = await Signatures.col().where('document_id', '==', documentId).get();
+    if (snap.empty) return null;
+    const d = snap.docs[0];
+    return { id: d.id, ...serializeTimestamps(d.data()) };
+  },
+};
+
 module.exports = {
   Users,
   Employees,
@@ -399,6 +435,7 @@ module.exports = {
   Tasks,
   AccessRequests,
   ChatLogs,
+  Signatures,
   db,
   auth,
   FieldValue,

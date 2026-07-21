@@ -13,6 +13,8 @@ router.get('/stats', adminController.getDashboardStats);
 router.get('/employees', adminController.getAllEmployees);
 router.get('/employees/:id', adminController.getEmployeeDetail);
 router.patch('/employees/:id/assign', adminController.assignManagerOrBuddy);
+router.patch('/employees/:id/stage', adminController.updateOnboardingStage);
+router.get('/employees/:id/signatures', adminController.getEmployeeSignatures);
 
 // Tasks
 router.post('/tasks', adminController.assignTask);
@@ -23,6 +25,7 @@ router.get('/documents', adminController.getAllDocuments);
 router.patch('/documents/:id/verify', adminController.verifyDocument);
 
 // Access requests
+router.get('/access-requests', adminController.getAllAccessRequests);
 router.patch('/access-requests/:id', adminController.handleAccessRequest);
 
 module.exports = router;

@@ -4,7 +4,7 @@
  * Socket.IO real-time notifications are preserved unchanged.
  */
 const {
-  Users, Employees, Documents, ChecklistItems, Tasks, AccessRequests,
+  Users, Employees, Documents, ChecklistItems, Tasks, AccessRequests, Signatures,
 } = require('../config/firestoreService');
 const { getIO } = require('../config/socket');
 const {
@@ -298,6 +298,71 @@ exports.getAllTasks = async (req, res, next) => {
     )).filter(Boolean);
 
     return res.status(200).json({ success: true, tasks: enriched });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── GET ALL ACCESS REQUESTS ──────────────────────────────────
+exports.getAllAccessRequests = async (req, res, next) => {
+  try {
+    const requests = await AccessRequests.findAll();
+
+    const enriched = (await Promise.all(
+      requests
+        .filter(r => r.employee_id)
+        .map(async (r) => {
+          const employee = await Employees.findById(r.employee_id);
+          const user     = employee ? await Users.findById(employee.user_id) : null;
+          return { ...r, Employee: { ...employee, User: user } };
+        })
+    )).filter(Boolean);
+
+    return res.status(200).json({ success: true, requests: enriched });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── GET EMPLOYEE SIGNATURES ──────────────────────────────────
+exports.getEmployeeSignatures = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const signatures = await Signatures.findByEmployeeId(id);
+    return res.status(200).json({ success: true, signatures });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── UPDATE ONBOARDING STAGE ──────────────────────────────────
+exports.updateOnboardingStage = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { onboarding_stage } = req.body;
+
+    const allowed = ['not_started', 'in_progress', 'completed'];
+    if (!onboarding_stage || !allowed.includes(onboarding_stage)) {
+      return res.status(400).json({ success: false, error: `onboarding_stage must be one of: ${allowed.join(', ')}` });
+    }
+
+    const employee = await Employees.findById(id);
+    if (!employee) {
+      return res.status(404).json({ success: false, error: 'Employee not found.' });
+    }
+
+    const updated = await Employees.update(id, { onboarding_stage });
+
+    try {
+      const io = getIO();
+      io.to(`employee_${employee.user_id}`).emit('employeeUpdated', {
+        type:    'stage_updated',
+        message: `Your onboarding stage has been updated to ${onboarding_stage}.`,
+        data:    { onboarding_stage },
+      });
+    } catch (_) {}
+
+    return res.status(200).json({ success: true, employee: updated });
   } catch (error) {
     next(error);
   }

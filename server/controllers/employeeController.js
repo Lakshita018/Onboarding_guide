@@ -6,7 +6,7 @@
 const streamifier = require('streamifier');
 const cloudinary   = require('../config/cloudinary');
 const {
-  Users, Employees, Documents, ChecklistItems, AccessRequests, Tasks,
+  Users, Employees, Documents, ChecklistItems, AccessRequests, Tasks, Signatures,
 } = require('../config/firestoreService');
 const { generateRecommendations } = require('../services/watsonxAI');
 const {
@@ -332,3 +332,68 @@ exports.getTasks = async (req, res, next) => {
   }
 };
 
+
+// ─── UPDATE TASK STATUS ────────────────────────────────────────
+exports.updateTaskStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const allowed = ['pending', 'in_progress', 'completed'];
+    if (!status || !allowed.includes(status)) {
+      return res.status(400).json({ success: false, error: `status must be one of: ${allowed.join(', ')}` });
+    }
+    const employee = await Employees.findByUserId(req.user.id);
+    if (!employee) return res.status(404).json({ success: false, error: 'Employee not found.' });
+    const task = await Tasks.findById(id);
+    if (!task || task.employee_id !== employee.id) {
+      return res.status(404).json({ success: false, error: 'Task not found.' });
+    }
+    const updated = await Tasks.update(id, { status });
+
+    // Real-time push to admin
+    try {
+      const { getIO } = require('../config/socket');
+      getIO().emit('adminDashboardUpdate', { type: 'task_status', data: { task_id: id, status, employee_id: employee.id } });
+    } catch (_) {}
+
+    return res.status(200).json({ success: true, task: updated });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── SAVE SIGNATURE ────────────────────────────────────────────
+exports.saveSignature = async (req, res, next) => {
+  try {
+    const { signature_data_url, document_id } = req.body;
+    if (!signature_data_url) {
+      return res.status(400).json({ success: false, error: 'signature_data_url is required.' });
+    }
+    const employee = await Employees.findByUserId(req.user.id);
+    if (!employee) {
+      return res.status(404).json({ success: false, error: 'Employee not found.' });
+    }
+    const signature = await Signatures.create({
+      employee_id: employee.id,
+      document_id: document_id || null,
+      signature_data_url,
+    });
+    return res.status(201).json({ success: true, signature });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── GET SIGNATURES ────────────────────────────────────────────
+exports.getSignatures = async (req, res, next) => {
+  try {
+    const employee = await Employees.findByUserId(req.user.id);
+    if (!employee) {
+      return res.status(404).json({ success: false, error: 'Employee not found.' });
+    }
+    const signatures = await Signatures.findByEmployeeId(employee.id);
+    return res.status(200).json({ success: true, signatures });
+  } catch (error) {
+    next(error);
+  }
+};
