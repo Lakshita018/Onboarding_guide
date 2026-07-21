@@ -5,13 +5,26 @@ import Modal from '../../components/common/Modal';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 import AccessRequest from '../../components/employee/AccessRequest';
 
+// IBM tool links — pre-populated quick-access cards
+const IBM_LINKS = [
+  { label: 'W3ID Portal',        description: 'IBM single sign-on identity portal',         href: '#' },
+  { label: 'IBM Outlook',        description: 'Corporate email via Outlook Web Access',      href: '#' },
+  { label: 'Slack',              description: 'Team messaging and collaboration',             href: '#' },
+  { label: 'Microsoft Teams',    description: 'Video conferencing and chat',                  href: '#' },
+  { label: 'Your Learning',      description: 'IBM learning & certification platform',        href: '#' },
+  { label: 'BOB',                description: 'IBM AI assistant for internal productivity',   href: '#' },
+  { label: 'Concert',            description: 'IT operations and observability platform',     href: '#' },
+  { label: 'HR Portal',          description: 'Benefits, payroll, and HR self-service',      href: '#' },
+  { label: 'Internal App Store', description: 'Browse and request internal IBM tools',       href: '#' },
+];
+
 const AccessPage = () => {
-  const [requests, setRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [requests, setRequests]   = useState([]);
+  const [loading, setLoading]     = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  
-  const [appName, setAppName] = useState('');
-  const [reason, setReason] = useState('');
+
+  const [appName, setAppName]     = useState('');
+  const [reason, setReason]       = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const fetchRequests = async () => {
@@ -38,7 +51,7 @@ const AccessPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!appName || !reason) return;
-    
+
     setSubmitting(true);
     try {
       const res = await api.post('/employee/access-request', { application_name: appName, reason });
@@ -56,7 +69,7 @@ const AccessPage = () => {
   if (loading) return <LoadingSkeleton variant="table-row" lines={5} />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="text-xl font-bold text-[#161616]">Access Requests</h1>
         <p className="text-sm text-[#525252] mt-1">
@@ -64,11 +77,39 @@ const AccessPage = () => {
         </p>
       </div>
 
-      <AccessRequest
-        requests={requests}
-        onOpenNewRequest={handleOpenNewRequest}
-      />
+      {/* IBM Quick-Access Links */}
+      <div>
+        <h2 className="text-sm font-semibold text-[#161616] mb-3">IBM Tools &amp; Platforms</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {IBM_LINKS.map((link) => (
+            <a
+              key={link.label}
+              href={link.href}
+              className="block p-4 border border-[#E0E0E0] rounded-sm bg-white hover:border-[#0F62FE] hover:bg-[#EDF5FF] transition-colors group"
+            >
+              <p className="text-xs font-bold text-[#161616] group-hover:text-[#0F62FE]">{link.label}</p>
+              <p className="text-[11px] text-[#525252] mt-0.5">{link.description}</p>
+              <p className="text-[10px] text-[#0F62FE] mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                Open →
+              </p>
+            </a>
+          ))}
+        </div>
+        <p className="text-[10px] text-[#8D8D8D] mt-2">
+          Links will be activated once your access is provisioned by your admin.
+        </p>
+      </div>
 
+      {/* My Access Requests */}
+      <div>
+        <h2 className="text-sm font-semibold text-[#161616] mb-3">My Requests</h2>
+        <AccessRequest
+          requests={requests}
+          onOpenNewRequest={handleOpenNewRequest}
+        />
+      </div>
+
+      {/* New Request Modal */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
