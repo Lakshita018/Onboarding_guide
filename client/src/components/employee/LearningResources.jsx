@@ -5,12 +5,54 @@ import Card from '../common/Card';
 import Badge from '../common/Badge';
 
 const COURSES = [
-  { id: 1, title: 'IBM onboarding guide', duration: '1 hour', type: 'Guide', required: true },
-  { id: 2, title: 'Cloud fundamentals', duration: '2 hours', type: 'Course', required: true },
-  { id: 3, title: 'AI fundamentals (watsonx)', duration: '1.5 hours', type: 'Course', required: true },
-  { id: 4, title: 'Security & Privacy Awareness', duration: '45 mins', type: 'Module', required: true },
-  { id: 5, title: 'Enterprise Design Thinking', duration: '3 hours', type: 'Course', required: false },
-  { id: 6, title: 'Agile at IBM Workspace', duration: '1.5 hours', type: 'Course', required: false },
+  {
+    id: 1,
+    title: 'IBM Onboarding Guide',
+    duration: '1 hour',
+    type: 'Guide',
+    required: true,
+    url: 'https://yourlearning.ibm.com/activity/PLAN-3CF652BC00DD',
+  },
+  {
+    id: 2,
+    title: 'Cloud Fundamentals',
+    duration: '2 hours',
+    type: 'Course',
+    required: true,
+    url: 'https://yourlearning.ibm.com/activity/PLAN-798F94ED6009',
+  },
+  {
+    id: 3,
+    title: 'AI Fundamentals (watsonx)',
+    duration: '1.5 hours',
+    type: 'Course',
+    required: true,
+    url: 'https://yourlearning.ibm.com/activity/COLLECTION-1094',
+  },
+  {
+    id: 4,
+    title: 'Security & Privacy Awareness',
+    duration: '45 mins',
+    type: 'Module',
+    required: true,
+    url: 'https://yourlearning.ibm.com/activity/URL-075BEC765747',
+  },
+  {
+    id: 5,
+    title: 'Enterprise Design Thinking',
+    duration: '3 hours',
+    type: 'Course',
+    required: false,
+    url: 'https://yourlearning.ibm.com/activity/PLAN-65F57E4DC6C1',
+  },
+  {
+    id: 6,
+    title: 'Agile at IBM Workspace',
+    duration: '1.5 hours',
+    type: 'Course',
+    required: false,
+    url: 'https://yourlearning.ibm.com/activity/PLAN-260BBCAF44E7',
+  },
 ];
 
 const LearningResources = () => {
@@ -40,9 +82,14 @@ const LearningResources = () => {
             </div>
             
             <div className="mt-4 pt-3 border-t border-[#F4F4F4] flex justify-end">
-              <button className="text-[10px] font-semibold text-[#0F62FE] hover:underline flex items-center gap-1 focus:outline-none">
+              <a
+                href={course.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] font-semibold text-[#0F62FE] hover:underline flex items-center gap-1"
+              >
                 Start Learning <ExternalLink className="w-3 h-3" />
-              </button>
+              </a>
             </div>
           </Card>
         </motion.div>

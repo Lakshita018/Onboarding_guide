@@ -25,7 +25,7 @@ const DocumentReview = ({ documents = [], onVerify, loading }) => {
             </thead>
             <tbody className="divide-y divide-[#E0E0E0]">
               {documents.map((doc) => {
-                const docUrl = `http://localhost:5000/${doc.file_path}`;
+                const docUrl = doc.cloudinary_url || doc.file_path || '#';
                 return (
                   <tr key={doc.id} className="hover:bg-[#F4F4F4] transition-colors">
                     <td className="px-4 py-3 font-semibold text-[#161616]">

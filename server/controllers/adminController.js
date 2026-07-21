@@ -1,9 +1,11 @@
-const User = require('../models/User');
-const Employee = require('../models/Employee');
-const Document = require('../models/Document');
-const ChecklistItem = require('../models/ChecklistItem');
-const Task = require('../models/Task');
-const AccessRequest = require('../models/AccessRequest');
+/**
+ * adminController.js
+ * All persistence uses Firestore via firestoreService.
+ * Socket.IO real-time notifications are preserved unchanged.
+ */
+const {
+  Users, Employees, Documents, ChecklistItems, Tasks, AccessRequests, Signatures,
+} = require('../config/firestoreService');
 const { getIO } = require('../config/socket');
 const {
   DOCUMENT_STATUS,
@@ -15,15 +17,18 @@ const {
 // ─── DASHBOARD STATS ──────────────────────────────────────────
 exports.getDashboardStats = async (req, res, next) => {
   try {
-    const allEmployees = await Employee.findAll({ include: [User] });
-    const totalEmployees = allEmployees.length;
-    const notStarted = allEmployees.filter(e => e.onboarding_stage === ONBOARDING_STAGES.NOT_STARTED).length;
-    const inProgress = allEmployees.filter(e => e.onboarding_stage === ONBOARDING_STAGES.IN_PROGRESS).length;
-    const completed = allEmployees.filter(e => e.onboarding_stage === ONBOARDING_STAGES.COMPLETED).length;
+    const allEmployees = await Employees.findAll();
 
-    const pendingDocuments = await Document.count({ where: { verification_status: DOCUMENT_STATUS.PENDING } });
-    const pendingAccess = await AccessRequest.count({ where: { status: ACCESS_REQUEST_STATUS.PENDING } });
-    const pendingTasks = await Task.count({ where: { status: TASK_STATUS.PENDING } });
+    const totalEmployees = allEmployees.length;
+    const notStarted     = allEmployees.filter(e => e.onboarding_stage === ONBOARDING_STAGES.NOT_STARTED).length;
+    const inProgress     = allEmployees.filter(e => e.onboarding_stage === ONBOARDING_STAGES.IN_PROGRESS).length;
+    const completed      = allEmployees.filter(e => e.onboarding_stage === ONBOARDING_STAGES.COMPLETED).length;
+
+    const [pendingDocuments, pendingAccess, pendingTasks] = await Promise.all([
+      Documents.countByStatus(DOCUMENT_STATUS.PENDING),
+      AccessRequests.countByStatus(ACCESS_REQUEST_STATUS.PENDING),
+      Tasks.countByStatus(TASK_STATUS.PENDING),
+    ]);
 
     return res.status(200).json({
       success: true,
@@ -46,12 +51,20 @@ exports.getDashboardStats = async (req, res, next) => {
 // ─── GET ALL EMPLOYEES ────────────────────────────────────────
 exports.getAllEmployees = async (req, res, next) => {
   try {
-    const employees = await Employee.findAll({
-      include: [{ model: User, attributes: ['id', 'name', 'email', 'created_at'] }],
-      order: [['created_at', 'DESC']],
-    });
+    const employees = await Employees.findAll();
 
-    return res.status(200).json({ success: true, employees });
+    // Enrich each employee with user info — skip orphan records
+    const enriched = (await Promise.all(
+      employees
+        .filter(emp => emp.user_id)
+        .map(async (emp) => {
+          const user = await Users.findById(emp.user_id);
+          if (!user) return null;
+          return { ...emp, User: user };
+        })
+    )).filter(Boolean);
+
+    return res.status(200).json({ success: true, employees: enriched });
   } catch (error) {
     next(error);
   }
@@ -62,21 +75,30 @@ exports.getEmployeeDetail = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const employee = await Employee.findByPk(id, {
-      include: [
-        { model: User, attributes: ['id', 'name', 'email', 'created_at'] },
-        { model: Document },
-        { model: ChecklistItem },
-        { model: Task },
-        { model: AccessRequest },
-      ],
-    });
-
+    const employee = await Employees.findById(id);
     if (!employee) {
       return res.status(404).json({ success: false, error: 'Employee not found.' });
     }
 
-    return res.status(200).json({ success: true, employee });
+    const [user, documents, checklist, tasks, accessRequests] = await Promise.all([
+      Users.findById(employee.user_id),
+      Documents.findByEmployeeId(id),
+      ChecklistItems.findByEmployeeId(id),
+      Tasks.findByEmployeeId(id),
+      AccessRequests.findByEmployeeId(id),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      employee: {
+        ...employee,
+        User:           user,
+        Documents:      documents.filter(d => d.document_type),
+        ChecklistItems: checklist,
+        Tasks:          tasks,
+        AccessRequests: accessRequests,
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -88,28 +110,28 @@ exports.assignManagerOrBuddy = async (req, res, next) => {
     const { id } = req.params;
     const { manager, buddy } = req.body;
 
-    const employee = await Employee.findByPk(id);
+    const employee = await Employees.findById(id);
     if (!employee) {
       return res.status(404).json({ success: false, error: 'Employee not found.' });
     }
 
     const updateData = {};
     if (manager !== undefined) updateData.manager = manager;
-    if (buddy !== undefined) updateData.buddy = buddy;
+    if (buddy   !== undefined) updateData.buddy   = buddy;
 
-    await employee.update(updateData);
+    const updated = await Employees.update(id, updateData);
 
     // Real-time notification
     try {
       const io = getIO();
       io.to(`employee_${employee.user_id}`).emit('employeeUpdated', {
-        type: 'assignment',
+        type:    'assignment',
         message: 'Your manager/buddy assignment has been updated.',
-        data: { manager: employee.manager, buddy: employee.buddy },
+        data:    { manager: updated.manager, buddy: updated.buddy },
       });
     } catch (_) {}
 
-    return res.status(200).json({ success: true, employee });
+    return res.status(200).json({ success: true, employee: updated });
   } catch (error) {
     next(error);
   }
@@ -124,27 +146,27 @@ exports.assignTask = async (req, res, next) => {
       return res.status(400).json({ success: false, error: 'employee_id and title are required.' });
     }
 
-    const employee = await Employee.findByPk(employee_id);
+    const employee = await Employees.findById(employee_id);
     if (!employee) {
       return res.status(404).json({ success: false, error: 'Employee not found.' });
     }
 
-    const task = await Task.create({
+    const task = await Tasks.create({
       employee_id,
       title,
       description: description || '',
       assigned_by: req.user.id,
-      status: TASK_STATUS.PENDING,
-      deadline: deadline ? new Date(deadline) : null,
+      status:      TASK_STATUS.PENDING,
+      deadline:    deadline ? new Date(deadline) : null,
     });
 
     // Real-time notification
     try {
       const io = getIO();
       io.to(`employee_${employee.user_id}`).emit('employeeUpdated', {
-        type: 'task_assigned',
+        type:    'task_assigned',
         message: `New task assigned: ${title}`,
-        data: task,
+        data:    task,
       });
     } catch (_) {}
 
@@ -157,8 +179,8 @@ exports.assignTask = async (req, res, next) => {
 // ─── VERIFY DOCUMENT ──────────────────────────────────────────
 exports.verifyDocument = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { status } = req.body;
+    const { id }                      = req.params;
+    const { status, review_comment }  = req.body;
 
     const allowed = [DOCUMENT_STATUS.VERIFIED, DOCUMENT_STATUS.REJECTED];
     if (!status || !allowed.includes(status)) {
@@ -168,24 +190,30 @@ exports.verifyDocument = async (req, res, next) => {
       });
     }
 
-    const document = await Document.findByPk(id, { include: [Employee] });
+    const document = await Documents.findById(id);
     if (!document) {
       return res.status(404).json({ success: false, error: 'Document not found.' });
     }
 
-    await document.update({ verification_status: status });
+    const updated = await Documents.update(id, {
+      verification_status: status,
+      review_comment: review_comment || null,
+      reviewed_at: new Date().toISOString(),
+    });
 
     // Real-time notification
     try {
+      // Look up the employee to get the user_id for socket room
+      const employee = await Employees.findById(document.employee_id);
       const io = getIO();
-      io.to(`employee_${document.Employee.user_id}`).emit('employeeUpdated', {
-        type: 'document_updated',
+      io.to(`employee_${employee.user_id}`).emit('employeeUpdated', {
+        type:    'document_updated',
         message: `Your document "${document.document_name}" has been ${status}.`,
-        data: { document_id: document.id, status },
+        data:    { document_id: id, status },
       });
     } catch (_) {}
 
-    return res.status(200).json({ success: true, document });
+    return res.status(200).json({ success: true, document: updated });
   } catch (error) {
     next(error);
   }
@@ -194,7 +222,7 @@ exports.verifyDocument = async (req, res, next) => {
 // ─── HANDLE ACCESS REQUEST ─────────────────────────────────────
 exports.handleAccessRequest = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const { id }     = req.params;
     const { status } = req.body;
 
     const allowed = [ACCESS_REQUEST_STATUS.APPROVED, ACCESS_REQUEST_STATUS.REJECTED];
@@ -205,40 +233,50 @@ exports.handleAccessRequest = async (req, res, next) => {
       });
     }
 
-    const request = await AccessRequest.findByPk(id, { include: [Employee] });
+    const request = await AccessRequests.findById(id);
     if (!request) {
       return res.status(404).json({ success: false, error: 'Access request not found.' });
     }
 
-    await request.update({
+    const updated = await AccessRequests.update(id, {
       status,
       approved_by: req.user.id,
     });
 
     // Real-time notification
     try {
+      const employee = await Employees.findById(request.employee_id);
       const io = getIO();
-      io.to(`employee_${request.Employee.user_id}`).emit('employeeUpdated', {
-        type: 'access_request_updated',
+      io.to(`employee_${employee.user_id}`).emit('employeeUpdated', {
+        type:    'access_request_updated',
         message: `Your access request for "${request.application_name}" has been ${status}.`,
-        data: { request_id: request.id, status, application: request.application_name },
+        data:    { request_id: id, status, application: request.application_name },
       });
     } catch (_) {}
 
-    return res.status(200).json({ success: true, request });
+    return res.status(200).json({ success: true, request: updated });
   } catch (error) {
     next(error);
   }
 };
 
-// ─── GET ALL PENDING DOCUMENTS ────────────────────────────────
+// ─── GET ALL DOCUMENTS ────────────────────────────────────────
 exports.getAllDocuments = async (req, res, next) => {
   try {
-    const documents = await Document.findAll({
-      include: [{ model: Employee, include: [{ model: User, attributes: ['name', 'email'] }] }],
-      order: [['created_at', 'DESC']],
-    });
-    return res.status(200).json({ success: true, documents });
+    const documents = await Documents.findAll();
+
+    // Enrich with employee + user info — skip orphans
+    const enriched = (await Promise.all(
+      documents
+        .filter(doc => doc.employee_id && doc.document_type)
+        .map(async (doc) => {
+          const employee = await Employees.findById(doc.employee_id);
+          const user     = employee ? await Users.findById(employee.user_id) : null;
+          return { ...doc, Employee: { ...employee, User: user } };
+        })
+    )).filter(Boolean);
+
+    return res.status(200).json({ success: true, documents: enriched });
   } catch (error) {
     next(error);
   }
@@ -247,11 +285,84 @@ exports.getAllDocuments = async (req, res, next) => {
 // ─── GET ALL TASKS ────────────────────────────────────────────
 exports.getAllTasks = async (req, res, next) => {
   try {
-    const tasks = await Task.findAll({
-      include: [{ model: Employee, include: [{ model: User, attributes: ['name', 'email'] }] }],
-      order: [['created_at', 'DESC']],
-    });
-    return res.status(200).json({ success: true, tasks });
+    const tasks = await Tasks.findAll();
+
+    const enriched = (await Promise.all(
+      tasks
+        .filter(task => task.employee_id)
+        .map(async (task) => {
+          const employee = await Employees.findById(task.employee_id);
+          const user     = employee ? await Users.findById(employee.user_id) : null;
+          return { ...task, Employee: { ...employee, User: user } };
+        })
+    )).filter(Boolean);
+
+    return res.status(200).json({ success: true, tasks: enriched });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── GET ALL ACCESS REQUESTS ──────────────────────────────────
+exports.getAllAccessRequests = async (req, res, next) => {
+  try {
+    const requests = await AccessRequests.findAll();
+
+    const enriched = (await Promise.all(
+      requests
+        .filter(r => r.employee_id)
+        .map(async (r) => {
+          const employee = await Employees.findById(r.employee_id);
+          const user     = employee ? await Users.findById(employee.user_id) : null;
+          return { ...r, Employee: { ...employee, User: user } };
+        })
+    )).filter(Boolean);
+
+    return res.status(200).json({ success: true, requests: enriched });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── GET EMPLOYEE SIGNATURES ──────────────────────────────────
+exports.getEmployeeSignatures = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const signatures = await Signatures.findByEmployeeId(id);
+    return res.status(200).json({ success: true, signatures });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── UPDATE ONBOARDING STAGE ──────────────────────────────────
+exports.updateOnboardingStage = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { onboarding_stage } = req.body;
+
+    const allowed = ['not_started', 'in_progress', 'completed'];
+    if (!onboarding_stage || !allowed.includes(onboarding_stage)) {
+      return res.status(400).json({ success: false, error: `onboarding_stage must be one of: ${allowed.join(', ')}` });
+    }
+
+    const employee = await Employees.findById(id);
+    if (!employee) {
+      return res.status(404).json({ success: false, error: 'Employee not found.' });
+    }
+
+    const updated = await Employees.update(id, { onboarding_stage });
+
+    try {
+      const io = getIO();
+      io.to(`employee_${employee.user_id}`).emit('employeeUpdated', {
+        type:    'stage_updated',
+        message: `Your onboarding stage has been updated to ${onboarding_stage}.`,
+        data:    { onboarding_stage },
+      });
+    } catch (_) {}
+
+    return res.status(200).json({ success: true, employee: updated });
   } catch (error) {
     next(error);
   }

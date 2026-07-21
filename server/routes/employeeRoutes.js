@@ -11,6 +11,10 @@ router.use(authMiddleware, roleMiddleware('employee'));
 // Profile
 router.get('/profile', employeeController.getProfile);
 
+// Tasks
+router.get('/tasks', employeeController.getTasks);
+router.patch('/tasks/:id/status', employeeController.updateTaskStatus);
+
 // Documents
 router.post('/documents/upload', uploadMiddleware.single('file'), employeeController.uploadDocument);
 router.post('/upload', uploadMiddleware.single('document'), employeeController.uploadDocument); // legacy alias
@@ -29,6 +33,10 @@ router.put('/profile/os', employeeController.updateOsType);
 // Access requests
 router.post('/access-request', employeeController.requestAccess);
 router.get('/access-requests', employeeController.getAccessRequests);
+
+// Signatures
+router.post('/signatures', employeeController.saveSignature);
+router.get('/signatures', employeeController.getSignatures);
 
 // AI Recommendations
 router.get('/recommendations', employeeController.getRecommendations);

@@ -27,3 +27,11 @@ yarn-error.log*
 .DS_Store
 .vscode/
 .idea/
+
+# Firebase service account key
+*serviceAccountKey*.json
+*service-account*.json
+
+# Client env
+client/.env
+client/.env.local
