@@ -1,342 +1,338 @@
-# IBM OnboardAI — Project Context
+# IBM OnboardAI - Context Tracking
 
-> **READ THIS FILE BEFORE EVERY CHANGE. UPDATE THIS FILE AFTER EVERY CHANGE.**
-
----
-
-## Project Overview
-
-**IBM OnboardAI** is an enterprise AI-powered Employee Onboarding Assistant built for the IBM watsonx Hackathon.
-
-It solves fragmented onboarding by centralizing every step — documents, tasks, access requests, learning resources, and AI guidance — into a single intelligent platform.
+This file maintains the current status, architecture decisions, folder structure, and next steps for the IBM OnboardAI platform development process. It is updated after each phase of construction.
 
 ---
 
-## Current Phase
-
-**Phase 1 — Backend Foundation** ✅ Complete  
-*Completed: 2025-07-16*
-
-### Phase 1 Features Implemented
-
-- PostgreSQL primary / SQLite fallback database connection with automatic failover
-- Full schema applied via `server/db/schema.sql` (7 tables, indexes, FK constraints)
-- Migration runner: `npm run migrate`
-- All 7 database models with parameterised queries (engine-agnostic)
-- All 8 controllers with input validation and error handling
-- All 8 route files with JWT auth + RBAC middleware
-- AI service abstraction: `watsonxAssistant.js` (mock chat) + `watsonxAI.js` (rule-based recommendations)
-- Socket.IO handler with JWT authentication and per-employee rooms
-- Global error handler middleware
-- File upload middleware (Multer, MIME validation, 10MB limit)
-- Phase 1 seed: IBM Admin + 3 demo employees with rich data (checklist, docs, tasks, access requests)
-- `server/utils/constants.js` — single source of truth for all enumerations
-
-**Next Phase: Phase 2 — Frontend Foundation (Vite, Tailwind, Router, Auth pages, Layout)**
+## 1. Project Overview
+- **Name**: IBM OnboardAI
+- **Description**: An enterprise-grade AI-powered Employee Onboarding Assistant created for the IBM watsonx Hackathon. Decoupled client-server design, supporting real-time notifications via Socket.IO and modular AI integrations.
+- **Current Status**: Phase 1 - Database Models, Migrations, Seed Data & Backend Core Completed. Ready for Phase 2 (Authentication).
 
 ---
 
-## Technology Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | React 18 + Vite + Tailwind CSS + Framer Motion |
-| Routing | React Router v6 |
-| HTTP Client | Axios |
-| Real-time | Socket.IO (client + server) |
-| Backend | Node.js + Express.js |
-| Auth | JWT + bcryptjs |
-| DB Primary | PostgreSQL (via `pg`) |
-| DB Fallback | SQLite (via `better-sqlite3@11.10.0`) |
-| File Storage | Local (disk) — S3-compatible abstraction layer ready |
-| AI Services | IBM watsonx Assistant (mock) + IBM watsonx AI / Granite (rule-based mock) |
-| Node Version | ≥ 18 (tested on v24.18.0) |
-
----
-
-## User Roles
-
-### EMPLOYEE
-Pre-joining:
-- Create account, upload documents, view offer letter, accept terms, ask AI questions
-
-Post-joining:
-- View personalized checklist, track progress, configure system setup
-- Request application access, view learning resources, view team info
-- Receive AI recommendations, chat with AI assistant
-
-### ADMIN
-- Manage employees, view onboarding progress, review documents
-- Assign managers/buddies, create tasks, monitor completion
-- Update onboarding workflow
-
----
-
-## Project Folder Structure
+## 2. Directory Layout & Architecture Status
+The workspace is structured as follows:
 
 ```
-watsonx-challenge/
-├── client/                         # React frontend (Vite) — Phase 2+
-│   ├── src/
-│   │   ├── api/                    auth · employee · admin · chat · documents
-│   │   ├── components/
-│   │   │   ├── layout/             AppLayout · Sidebar · Topbar
-│   │   │   ├── ui/                 Button · Card · Badge · Modal · Input · Spinner · ProgressBar · Notification
-│   │   │   └── shared/             ProtectedRoute · PageTransition
-│   │   ├── hooks/                  useAuth · useSocket · useNotifications
-│   │   ├── pages/
-│   │   │   ├── auth/               Login · Signup
-│   │   │   ├── employee/           Dashboard · Checklist · Documents · AccessRequests · Learning · Team · Chat
-│   │   │   └── admin/              Dashboard · Employees · EmployeeDetail · Documents · Tasks
-│   │   └── store/                  AuthContext · NotificationContext
-│   └── src/utils/                  constants · helpers
-│
-├── server/                         # Node.js + Express backend ✅ Phase 1 Complete
-│   ├── config/
-│   │   ├── database.js             # PG primary / SQLite fallback (auto-detect)
-│   │   └── constants.js            # Re-exports shared + adds DEFAULT_CHECKLIST
-│   ├── controllers/
-│   │   ├── authController.js       # register, login, getMe
-│   │   ├── employeeController.js   # getProfile, updateProfile, acceptOffer, getRecommendations
-│   │   ├── adminController.js      # listEmployees, getEmployee, updateEmployee, createEmployee, getStats
-│   │   ├── documentController.js   # getDocuments, uploadDocument, verifyDocument, deleteDocument
-│   │   ├── checklistController.js  # getChecklist, markComplete, markIncomplete, addItem
-│   │   ├── taskController.js       # getMyTasks, updateTaskStatus, createTask, getAllTasks
-│   │   ├── accessController.js     # getMyRequests, createRequest, reviewRequest, getPendingRequests
-│   │   └── chatController.js       # getChatHistory, sendMessage, clearHistory
-│   ├── middleware/
-│   │   ├── auth.js                 # JWT verification
-│   │   ├── roleCheck.js            # RBAC factory
-│   │   ├── upload.js               # Multer + MIME + size validation
-│   │   └── errorHandler.js         # Global error handler
-│   ├── models/
-│   │   ├── User.js                 findById · findByEmail · create · findAll
-│   │   ├── Employee.js             findById · findByUserId · create · update · findAll · countByStage
-│   │   ├── Document.js             findById · findByEmployeeId · create · updateStatus · findPending · delete
-│   │   ├── ChecklistItem.js        findByEmployeeId · create · bulkCreate · markComplete · markIncomplete · getProgress
-│   │   ├── Task.js                 findByEmployeeId · findById · create · updateStatus · findAllForAdmin
-│   │   ├── AccessRequest.js        findByEmployeeId · findById · create · updateStatus · findPending
-│   │   └── ChatLog.js              findByEmployeeId · create · clearByEmployeeId
-│   ├── routes/
-│   │   ├── auth.js                 POST /register · POST /login · GET /me
-│   │   ├── employee.js             GET /profile · PATCH /profile · POST /accept-offer · GET /recommendations
-│   │   ├── admin.js                CRUD employees · stats · tasks · access reviews · doc verification
-│   │   ├── documents.js            GET / · POST /upload · DELETE /:id
-│   │   ├── checklist.js            GET / · PATCH /:id/complete · PATCH /:id/incomplete
-│   │   ├── tasks.js                GET / · PATCH /:id/status
-│   │   ├── access.js               GET / · POST /
-│   │   └── chat.js                 GET /history · POST /message · DELETE /history
-│   ├── services/
-│   │   ├── watsonxAssistant.js     Mock chat (12 intents, keyword matching, suggestions)
-│   │   └── watsonxAI.js            Rule-based recommendations (stage + progress nudges)
-│   ├── socket/
-│   │   └── socketHandler.js        JWT auth · employee rooms · admin room · event handlers
-│   ├── utils/
-│   │   └── constants.js            ← NEW: All enumerations, helpers, API response formatters
-│   ├── db/
-│   │   ├── schema.sql              7 tables, indexes, FK constraints (PG + SQLite compatible)
-│   │   ├── migrate.js              npm run migrate
-│   │   └── seed.js                 Legacy seed (admin@onboardai.com + jane.doe@onboardai.com)
-│   ├── seed/
-│   │   └── seed.js                 ← NEW: Phase 1 seed (admin@ibm.com + 3 IBM employees)
-│   ├── uploads/                    Local file storage (gitignored)
-│   ├── .env.example
-│   ├── index.js                    Express + Socket.IO entrypoint
-│   └── package.json
-│
-├── shared/
-│   └── constants.js                Shared constants (roles, stages, statuses, helpers)
-│
-├── context.md                      ← THIS FILE
-├── ARCHITECTURE.md
-├── DATABASE.md
-└── README.md
+IBM_Onboarding_tool/
+├── docs/
+│   ├── architecture_plan.md   # Architectural design and flowcharts
+│   ├── database_plan.md       # High-level database schema outline
+│   └── database-schema.md     # Detailed database column specifications
+├── client/                     # Frontend (React/Vite/Tailwind v4 theme, routing, contexts)
+│   └── src/
+│       ├── api/               # Axios custom configuration
+│       ├── common/            # Shared UI components (Button, Card, Modal, LoadingSkeleton)
+│       ├── layout/            # Layout shells (Sidebar, Topbar, Layout wrapper)
+│       ├── context/           # React Context (AuthContext, SocketContext)
+│       ├── routes/            # Route guards (PrivateRoute, RoleRoute)
+│       ├── pages/             # Auth, Employee, Admin pages
+│       └── styles/            # Theme CSS styles
+├── server/                     # Backend (Node/Express API with JWT, Socket.IO, Sequelize)
+│   ├── config/                # DB & Socket initializers
+│   ├── controllers/           # Endpoint controllers
+│   ├── middleware/            # Security & upload middlewares
+│   ├── models/                # Sequelize schema definitions
+│   ├── routes/                # Router controllers
+│   ├── services/              # Watsonx Assistant & Watsonx AI stubs
+│   ├── utils/                 # Constants
+│   └── seed/                  # Seeding script
+├── shared/                     # Shared constants
+│   └── constants.js           # Shared enums
+├── .env.example                # Global variables template
+├── .env                        # Local variables file
+├── .gitignore                  # Ignoring logs, modules, db artifacts
+├── README.md                   # Project documentation foundation
+└── context.md                  # This context tracking file
 ```
 
 ---
 
-## Phase Log
+## 3. Development Progress
 
-| Phase | Title | Status | Date |
-|---|---|---|---|
-| 0 | Foundation (architecture, structure, DB plan, context) | ✅ Done | 2025-07-16 |
-| 1 | Backend Foundation (Express, DB, Auth, Models, Routes, Seed) | ✅ Done | 2025-07-16 |
-| 2 | Frontend Foundation (Vite, Tailwind, Router, Layout, Auth pages) | ⏳ Pending | — |
-| 3 | Employee Dashboard + Checklist + Documents | ⏳ Pending | — |
-| 4 | Admin Dashboard + Employee Management | ⏳ Pending | — |
-| 5 | AI Services (watsonxAssistant + watsonxAI) + Chat UI | ⏳ Pending | — |
-| 6 | Real-time (Socket.IO) | ⏳ Pending | — |
-| 7 | Access Requests + Learning + Team pages | ⏳ Pending | — |
-| 8 | Polish, Animations, Production Hardening | ⏳ Pending | — |
+### Phase 0: Project Foundation, Architecture & Initial Setup (Completed)
+- [x] Full-stack folder structure created
+- [x] Frontend initialized (Vite, React, Tailwind CSS v4 setup)
+- [x] Backend initialized (Express, Sequelize configuration, Socket.IO wrapper)
+- [x] Database connection prepared (Sequelize connected to SQLite database for dev)
+- [x] Environment configuration created (`.env` and `.env.example` created)
+- [x] Socket.IO foundation created (Connection/room join/disconnect callbacks defined)
+- [x] Watsonx service placeholders created (`askAssistant` & `getNextRecommendedTask` stubs)
+- [x] Database schema documented (`docs/database-schema.md`)
+- [x] Development workflow established (Concurrently configured to launch client & server)
+- [x] `context.md` tracking initialized
 
----
+### Phase 1: Database Models, Migrations, Seed Data & Backend Core (Completed)
+- [x] Database connection configured using Sequelize
+- [x] All 7 database models created (User, Employee, Document, ChecklistItem, Task, AccessRequest, ChatLog)
+- [x] Complete model relationships defined
+- [x] Database auto-migrations script implemented (`server/migrate.js`)
+- [x] Database seeding script implemented with mock data (`server/seed/seed.js`)
+- [x] Centralized error handling middleware created (`server/middleware/errorHandler.js`)
+- [x] Enum constants helper created (`server/utils/constants.js`)
 
-## Database Schema (7 Tables)
+### Phase 2: Authentication and Role Based Access (Completed)
+- [x] Backend Signup, Login, and Profile APIs implemented
+- [x] JWT creation & validation utility created (`server/utils/jwt.js`)
+- [x] authenticateUser and authorizeRole middlewares implemented
+- [x] Authentication React Context provider implemented
+- [x] Axios request/response session header interceptors added
+- [x] Login and Signup pages designed with Framer Motion animations
+- [x] PrivateRoute and RoleRoute route guards implemented
+- [x] Employee and Admin dashboard placeholders initialized
 
-| Table | Key Columns | Notes |
-|---|---|---|
-| `users` | id, name, email, password_hash, role, created_at | role: employee \| admin |
-| `employees` | id, user_id, department, designation, manager, buddy, joining_date, onboarding_stage, offer_accepted, os_type, status | stage: PRE_JOINING → FULLY_PRODUCTIVE |
-| `documents` | id, employee_id, document_name, document_type, file_path, file_size_kb, mime_type, verification_status | status: pending \| verified \| rejected |
-| `checklist_items` | id, employee_id, title, category, priority, completed, completed_at, order_index, created_at | priority: high \| medium \| low |
-| `tasks` | id, employee_id, title, assigned_by, status, deadline, created_at, updated_at | status: pending \| in_progress \| completed \| overdue |
-| `access_requests` | id, employee_id, application_name, reason, status, approved_by, reviewed_at | status: pending \| approved \| rejected |
-| `chat_logs` | id, employee_id, sender, message, intent, timestamp | sender: user \| assistant |
+### Phase 3: Enterprise Application Shell and Premium UI Layout (Completed)
+- [x] Responsive layout shell container (`Layout.jsx`)
+- [x] Collapsible sidebar navigation for employee/admin pages (`Sidebar.jsx`)
+- [x] Topbar page title identifier and user profile avatar (`Topbar.jsx`)
+- [x] Structured page container elements
 
-### Onboarding Stage Machine
-```
-PRE_JOINING → ORIENTATION → SYSTEM_SETUP → TEAM_INTEGRATION → FULLY_PRODUCTIVE
-```
-Stage aliases (for seed/input convenience):
-- `not_started` → `PRE_JOINING`
-- `in_progress`  → `ORIENTATION`
-- `completed`    → `FULLY_PRODUCTIVE`
+### Phase 4: Employee Onboarding Cockpit (Completed)
+- [x] Dashboard visualizers tracking checklist items (`Dashboard.jsx`)
+- [x] Document submission and upload handlers (`DocumentsPage.jsx`)
+- [x] Interactive task status checkbox listing (`ChecklistPage.jsx`)
+- [x] OS selection configuration setup preferences (`SetupPage.jsx`)
+- [x] Application credentials request portal (`AccessPage.jsx`)
+- [x] Standard learning syllabus path references (`LearningPage.jsx`)
 
----
+### Phase 5: Admin Management Console (Completed)
+- [x] Employee status progress listing grid (`EmployeesPage.jsx`)
+- [x] Uploaded document verification checklist tools (`DocumentsPage.jsx`)
+- [x] Custom checklist task creator (`TasksPage.jsx`)
+- [x] Aggregated compliance reports download analytics (`ReportsPage.jsx`)
 
-## API Endpoints (Phase 1)
-
-| Method | Route | Auth | Description |
-|---|---|---|---|
-| POST | `/api/auth/register` | Public | Create new account |
-| POST | `/api/auth/login` | Public | Login → JWT |
-| GET | `/api/auth/me` | JWT | Current user + employee profile |
-| GET | `/api/employee/profile` | employee | Own employee profile |
-| PATCH | `/api/employee/profile` | employee | Update profile fields |
-| POST | `/api/employee/accept-offer` | employee | Accept offer letter |
-| GET | `/api/employee/recommendations` | employee | AI recommendations |
-| GET | `/api/checklist` | employee | Checklist + progress |
-| PATCH | `/api/checklist/:id/complete` | employee | Mark item complete |
-| PATCH | `/api/checklist/:id/incomplete` | employee | Mark item incomplete |
-| GET | `/api/documents` | employee | Own documents |
-| POST | `/api/documents/upload` | employee | Upload document |
-| DELETE | `/api/documents/:id` | employee/admin | Delete document |
-| GET | `/api/tasks` | employee | Own tasks |
-| PATCH | `/api/tasks/:id/status` | employee | Update task status |
-| GET | `/api/access` | employee | Own access requests |
-| POST | `/api/access` | employee | Submit access request |
-| GET | `/api/chat/history` | employee | Chat history |
-| POST | `/api/chat/message` | employee | Send message to AI |
-| DELETE | `/api/chat/history` | employee | Clear chat |
-| GET | `/api/admin/employees` | admin | List all employees |
-| POST | `/api/admin/employees` | admin | Create employee |
-| GET | `/api/admin/employees/:id` | admin | Employee detail |
-| PATCH | `/api/admin/employees/:id` | admin | Update employee |
-| GET | `/api/admin/stats` | admin | Platform statistics |
-| GET | `/api/admin/tasks` | admin | All tasks |
-| POST | `/api/admin/tasks` | admin | Assign task |
-| GET | `/api/admin/access/pending` | admin | Pending access requests |
-| PATCH | `/api/admin/access/:id` | admin | Approve/reject access |
-| GET | `/api/admin/documents/pending` | admin | Pending document review |
-| PATCH | `/api/admin/documents/:id/verify` | admin | Verify/reject document |
-| GET | `/api/health` | Public | Health check |
+### Phase 6: watsonx Cognitive AI Assistant Integration (Completed)
+- [x] Interactive chat overlay interface (`ChatPage.jsx`)
+- [x] Real-time message log context history (`ChatLog` model integration)
+- [x] AI Recommendation engine stub connectivity (`watsonxAssistant` and `watsonxAI`)
 
 ---
 
-## Socket.IO Events
-
-| Event | Direction | Payload |
-|---|---|---|
-| `joinRoom` | Client → Server | `{ employeeId }` |
-| `employeeUpdated` | Server → Employee | `{ type, data }` |
-| `taskAssigned` | Server → Employee | `{ task }` |
-| `documentApproved` | Server → Employee | `{ document }` |
-| `notification` | Server → Employee | `{ title, message, type }` |
-| `adminAlert` | Server → Admin room | `{ employeeId, event }` |
+## 4. Architectural Rules & Security Constraints
+- **AI Decoupling**: Frontend never makes direct requests to Watsonx APIs. It accesses the backend service layer (`/server/services/watsonxAssistant` and `/server/services/watsonxAI`), ensuring the backend can switch seamlessly from mock responses to actual IBM API endpoints without changes to the UI.
+- **Database Fallback**: Design SQLite schemas for instant local startup and developer convenience, keeping structures compatible with PostgreSQL (standardizing date-time, serial keys, and standard indexes).
+- **Security Visibility**: The UI must display secure notification statements: *"Documents are securely stored and accessible only to authorized users."*
+- **Real-Time Data**: Any server-side data mutations must emit events like `employeeUpdated` via Socket.IO to notify connected clients without force-refreshing their state.
 
 ---
 
-## Demo Accounts (Phase 1 Seed)
+## 5. Phase Log
 
-| Role | Email | Password | Stage | Notes |
-|---|---|---|---|---|
-| Admin | admin@ibm.com | Admin123 | — | Full admin access |
-| Employee | aarav@ibm.com | Employee123 | PRE_JOINING | Not started, no documents |
-| Employee | priya@ibm.com | Employee123 | ORIENTATION | In progress, 5/10 checklist done, 2 docs, 2 access requests |
-| Employee | rahul@ibm.com | Employee123 | FULLY_PRODUCTIVE | 12/12 complete, 3 docs verified, all access approved |
-
----
-
-## Key Design Decisions
-
-1. **AI abstraction** — Frontend never calls IBM APIs. All AI goes through `server/services/`.
-2. **DB abstraction** — `server/config/database.js` tries PostgreSQL first, falls back to SQLite. Same `query()` interface.
-3. **Storage abstraction** — `server/middleware/upload.js` wraps Multer; controllers never call `fs` directly.
-4. **Role guard** — `ProtectedRoute.jsx` + `roleCheck.js` middleware enforce role boundaries at every layer.
-5. **Real-time** — Socket.IO emits events to `employee:<id>` rooms when admin actions affect an employee.
-6. **Design system** — IBM Carbon-inspired: IBM Blue (`#0F62FE`), neutral grays, IBM Plex Sans.
-7. **Constants** — `server/utils/constants.js` is the single source of truth. Never hardcode status strings.
-8. **RETURNING clause** — SQLite query router detects `RETURNING` keyword and uses `.all()` to return inserted rows.
-
----
-
-## Environment Variables (server/.env)
-
-```
-PORT=5000
-NODE_ENV=development
-JWT_SECRET=<long-random-secret>
-JWT_EXPIRES_IN=7d
-
-# PostgreSQL (primary — leave blank to use SQLite)
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=onboardai
-DB_USER=postgres
-DB_PASSWORD=<password>
-
-# SQLite fallback
-SQLITE_PATH=./db/onboardai.db
-
-# File storage
-UPLOAD_DIR=./uploads
-MAX_FILE_SIZE_MB=10
-
-# CORS
-CLIENT_ORIGIN=http://localhost:5173
-
-# IBM watsonx (Phase 5+)
-WATSONX_API_KEY=
-WATSONX_PROJECT_ID=
-WATSONX_ASSISTANT_ID=
-WATSONX_URL=https://us-south.ml.cloud.ibm.com
-```
-
----
-
-## Commands
-
-```bash
-# Install dependencies
-cd server && npm install
-
-# Apply schema (create tables)
-npm run migrate
-
-# Seed Phase 1 demo data
-npm run seed
-
-# Start dev server (with hot reload)
-npm run dev
-
-# Start production server
-npm start
-```
+### Date: 2026-07-16
+- **Phase Completed**: Phase 0 - Project Foundation, Architecture & Initial Setup
+- **Details**:
+  - Architecture plan and database schemas fully mapped and documented.
+  - React Vite client initialized with Tailwind CSS v4 theme, React Router, Framer Motion, Axios, and Socket.IO client.
+  - Node Express server configured with Sequelize, Socket.IO, Multer, JWT, and bcryptjs.
+  - Database schema documented in `docs/database-schema.md`.
+  - Watsonx Assistant service stub created with `askAssistant` (mocking context responses).
+  - Watsonx AI service stub created with `getNextRecommendedTask` (mocking task rules).
+  - Socket.IO connection and room joining initialized on port 5000.
+  - Concurrently configured to run frontend and backend in tandem.
+- **Files Added**:
+  - `docs/architecture_plan.md`
+  - `docs/database_plan.md`
+  - `docs/database-schema.md`
+  - `shared/constants.js`
+  - `server/package.json`
+  - `server/app.js`
+  - `server/server.js`
+  - `server/config/database.js`
+  - `server/config/socket.js`
+  - `server/controllers/authController.js`
+  - `server/controllers/employeeController.js`
+  - `server/controllers/adminController.js`
+  - `server/controllers/chatController.js`
+  - `server/middleware/authMiddleware.js`
+  - `server/middleware/roleMiddleware.js`
+  - `server/middleware/uploadMiddleware.js`
+  - `server/models/User.js`
+  - `server/models/Employee.js`
+  - `server/models/Document.js`
+  - `server/models/Task.js`
+  - `server/models/ChecklistItem.js`
+  - `server/models/AccessRequest.js`
+  - `server/models/ChatLog.js`
+  - `server/routes/authRoutes.js`
+  - `server/routes/employeeRoutes.js`
+  - `server/routes/adminRoutes.js`
+  - `server/routes/chatRoutes.js`
+  - `server/services/watsonxAssistant.js`
+  - `server/services/watsonxAI.js`
+  - `server/seed/seed.js`
+  - `client/src/api/axios.js`
+  - `client/src/layout/Sidebar.jsx`
+  - `client/src/layout/Topbar.jsx`
+  - `client/src/layout/Layout.jsx`
+  - `client/src/common/Button.jsx`
+  - `client/src/common/Card.jsx`
+  - `client/src/common/Modal.jsx`
+  - `client/src/common/LoadingSkeleton.jsx`
+  - `client/src/context/AuthContext.jsx`
+  - `client/src/context/SocketContext.jsx`
+  - `client/src/routes/PrivateRoute.jsx`
+  - `client/src/routes/RoleRoute.jsx`
+  - `client/src/pages/auth/Login.jsx`
+  - `client/src/pages/auth/Signup.jsx`
+  - `client/src/pages/employee/Dashboard.jsx`
+  - `client/src/pages/admin/Dashboard.jsx`
+  - `client/vite.config.js`
+  - `client/src/index.css`
+  - `package.json`
+  - `.env.example`
+  - `.env`
+  - `.gitignore`
+  - `README.md`
+- **Next Phase**: Phase 1 - Database Models and Backend Foundation (Completed).
 
 ---
 
-## Known Issues
-
-- `better-sqlite3` requires native build; on Node 24 use `npm approve-scripts better-sqlite3` before install.
-- The SQLite fallback does not support multi-statement transactions across models. For production, PostgreSQL is required.
-- `server/db/seed.js` (legacy) uses `admin@onboardai.com`. The Phase 1 canonical seed is `server/seed/seed.js` using `admin@ibm.com`.
+### Date: 2026-07-16
+- **Phase Completed**: Phase 1 - Database Models, Migrations, Seed Data & Backend Core
+- **Details**:
+  - Configured Sequelize database connections standardizing SQLite absolute storage paths.
+  - Implemented all 7 database models and relations (User, Employee, Document, ChecklistItem, Task, AccessRequest, ChatLog).
+  - Setup auto-migrations and mock seeding script.
+- **Next Phase**: Phase 2 - JWT Authentication, Role-Based Access & User Session System.
 
 ---
 
-## Notes
+## 6. Phase 2 Completed Log
 
-- All API responses use `{ success, data, message }` envelope.
-- Passwords hashed with bcryptjs, saltRounds = 12.
-- JWT payload: `{ id, email, role }`.
-- File uploads validated for MIME type (PDF, PNG, JPG, DOCX) and size (≤ 10 MB).
-- Always import constants from `server/utils/constants.js` in new server code.
+### Date: 2026-07-16
+- **Phase Completed**: Phase 2 - JWT Authentication, Role-Based Access & User Session System
+- **Details**:
+  - Implemented secure user registration (Signup API) and Session creation (Login API) with bcryptjs password hashing.
+  - Added centralized JWT signing and verification utility.
+  - Configured `authenticateUser` and `authorizeRole` security middlewares to intercept and guard private endpoints.
+  - Developed premium React authentication screens (Login and Signup views) powered by Framer Motion.
+  - Built unified React Auth Context provider management (`user`, `token`, `login()`, `logout()`, `isAuthenticated`).
+  - Added automatic Axios Bearer Token interceptor and 401 Unauthorized route redirection.
+  - Initialized placeholder templates for Employee and Admin Dashboards.
+- **Backend APIs**:
+  - `POST /api/auth/signup`
+  - `POST /api/auth/login`
+  - `GET /api/auth/profile`
+- **Frontend Pages**:
+  - Login Page: `client/src/pages/auth/Login.jsx`
+  - Signup Page: `client/src/pages/auth/Signup.jsx`
+- **Files Modified**:
+  - `server/controllers/authController.js`
+  - `server/routes/authRoutes.js`
+  - `server/middleware/authMiddleware.js`
+  - `server/middleware/roleMiddleware.js`
+  - `server/config/database.js`
+  - `client/src/context/AuthContext.jsx`
+  - `client/src/api/axios.js`
+  - `client/src/pages/auth/Login.jsx`
+  - `client/src/pages/auth/Signup.jsx`
+  - `client/src/pages/employee/Dashboard.jsx`
+  - `client/src/pages/admin/Dashboard.jsx`
+- **Files Created**:
+  - `server/utils/jwt.js`
+- **Known Issues**:
+  - None.
+- **Next Phase**: Phase 3, 4, 5, and 6 full architecture alignments.
+
+---
+
+## 7. Phase 3 Completed Log
+
+### Date: 2026-07-16
+- **Phase Completed**: Phase 3 - Enterprise Application Shell, Premium UI System & Navigation Foundation
+- **Details**:
+  - Structured shared layout shells with responsive collapsible Sidebar, Topbar, and Breadcrumbs.
+  - Implemented responsive MobileSidebar overlay drawer for mobile device views.
+  - Created premium styling tokens in `theme.css` with dark mode foundation layout support.
+  - Created reusable UI elements: Button, Card, Modal, Badge, ProgressBar, and LoadingSkeleton.
+- **Files Created**:
+  - [client/src/components/layout/Layout.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/layout/Layout.jsx)
+  - [client/src/components/layout/Sidebar.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/layout/Sidebar.jsx)
+  - [client/src/components/layout/Topbar.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/layout/Topbar.jsx)
+  - [client/src/components/layout/MobileSidebar.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/layout/MobileSidebar.jsx)
+  - [client/src/components/layout/Breadcrumbs.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/layout/Breadcrumbs.jsx)
+  - [client/src/components/common/Button.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/common/Button.jsx)
+  - [client/src/components/common/Card.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/common/Card.jsx)
+  - [client/src/components/common/Modal.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/common/Modal.jsx)
+  - [client/src/components/common/Badge.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/common/Badge.jsx)
+  - [client/src/components/common/ProgressBar.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/common/ProgressBar.jsx)
+  - [client/src/components/common/LoadingSkeleton.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/common/LoadingSkeleton.jsx)
+  - [client/src/styles/theme.css](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/styles/theme.css)
+
+---
+
+## 8. Phase 4 Completed Log
+
+### Date: 2026-07-16
+- **Phase Completed**: Phase 4 - Employee Pre-Joining Experience, Document Management, Offer Acceptance, AI Chatbot Foundation
+- **Details**:
+  - Implemented employee documents upload and history tracking.
+  - Created OfferViewer for employee to accept employment offer contract, updating SQLite employee profiles.
+  - Created ChatWidget AI assistant bubble component, integrated with watsonxAssistant service.
+- **Files Created**:
+  - [client/src/components/employee/DocumentUpload.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/employee/DocumentUpload.jsx)
+  - [client/src/components/employee/DocumentList.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/employee/DocumentList.jsx)
+  - [client/src/components/employee/OfferViewer.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/employee/OfferViewer.jsx)
+  - [client/src/components/employee/ChatWidget.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/employee/ChatWidget.jsx)
+- **Backend APIs**:
+  - `POST /api/employee/documents/upload`
+  - `PUT /api/employee/offer/accept`
+  - `POST /api/chat`
+
+---
+
+## 9. Phase 5 Completed Log
+
+### Date: 2026-07-16
+- **Phase Completed**: Phase 5 - Employee Post-Joining Experience, Checklist, Setup Guide, Access Requests, AI Recommendations
+- **Details**:
+  - Implemented employee checklist progress checking.
+  - Setup OS preference configuration selector rendering instructions for Windows, macOS, and Linux.
+  - Developed software access request portal with application status indicators.
+  - Created TeamInfo card for buddy and manager references.
+  - Built NextRecommendedTask AI component suggesting tasks from checklist priority algorithms.
+- **Files Created**:
+  - [client/src/components/employee/Checklist.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/employee/Checklist.jsx)
+  - [client/src/components/employee/SetupGuide.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/employee/SetupGuide.jsx)
+  - [client/src/components/employee/AccessRequest.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/employee/AccessRequest.jsx)
+  - [client/src/components/employee/LearningResources.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/employee/LearningResources.jsx)
+  - [client/src/components/employee/TeamInfo.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/employee/TeamInfo.jsx)
+  - [client/src/components/employee/NextRecommendedTask.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/employee/NextRecommendedTask.jsx)
+- **Backend APIs**:
+  - `GET /api/employee/checklist`
+  - `PATCH /api/employee/checklist/:id`
+  - `PUT /api/employee/profile/os`
+  - `GET /api/employee/access-requests`
+  - `POST /api/employee/access-request`
+  - `GET /api/employee/recommendations`
+
+---
+
+## 10. Phase 6 Completed Log
+
+### Date: 2026-07-16
+- **Phase Completed**: Phase 6 - Admin Dashboard & Employee Management
+- **Details**:
+  - Developed centralized Admin Stats Overview cards and Employee interactive tables.
+  - Built EmployeeDetails panel for manager & buddy assignment, checklist audits, and document verifications.
+  - Implemented DocumentReview with Approve/Reject hooks.
+  - Setup TaskManager to create and allocate compliance checklists to specific candidates.
+- **Files Created**:
+  - [client/src/components/admin/AdminStats.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/admin/AdminStats.jsx)
+  - [client/src/components/admin/EmployeeTable.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/admin/EmployeeTable.jsx)
+  - [client/src/components/admin/EmployeeDetailsCard.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/admin/EmployeeDetailsCard.jsx)
+  - [client/src/components/admin/DocumentReview.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/admin/DocumentReview.jsx)
+  - [client/src/components/admin/EmployeeAssignment.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/admin/EmployeeAssignment.jsx)
+  - [client/src/components/admin/TaskManager.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/components/admin/TaskManager.jsx)
+  - [client/src/pages/admin/EmployeeDetails.jsx](file:///Users/anushsharma/Desktop/IBM_Onboarding_tool/client/src/pages/admin/EmployeeDetails.jsx)
+- **Backend APIs**:
+  - `GET /api/admin/stats`
+  - `GET /api/admin/employees`
+  - `GET /api/admin/employees/:id`
+  - `PATCH /api/admin/employees/:id/assign`
+  - `POST /api/admin/tasks`
+  - `GET /api/admin/documents`
+  - `PATCH /api/admin/documents/:id/verify`
+
+

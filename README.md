@@ -1,144 +1,76 @@
-# IBM OnboardAI
+# IBM OnboardAI — AI-Powered Employee Onboarding Assistant
 
-**AI-Powered Employee Onboarding Assistant**
-*IBM watsonx Hackathon Project*
-
----
-
-## What Is This?
-
-IBM OnboardAI is an enterprise-grade onboarding platform that guides employees from pre-joining paperwork to fully productive team member — with AI assistance at every step.
-
-It replaces scattered emails, manual HR processes, and tribal knowledge with a single intelligent hub: personalized checklists, document management, access requests, learning resources, team visibility, and an AI chat assistant powered by IBM watsonx.
+IBM OnboardAI is an enterprise-grade full-stack platform designed to simplify, automate, and enhance the corporate onboarding experience. Built for the IBM watsonx Hackathon, it guides employees from pre-joining readiness to full workspace productivity.
 
 ---
 
-## Quick Start
+## 1. Core Objectives
+- **Empower Employees**: Clear checklist paths, system hardware customization, secure documentation uploads, and an interactive AI assistant.
+- **Support Admins/HR**: Real-time progress trackers, instant task assignments, and document verification interfaces.
+- **Watsonx Orchestration**: Decoupled AI integration enabling smart chat agent answers and role-based action recommendations.
+
+---
+
+## 2. Technology Stack
+
+### Frontend
+- **Framework**: React (Vite-based SPA)
+- **Styling**: Tailwind CSS v4, custom theme based on IBM Carbon
+- **Animations**: Framer Motion
+- **Communication**: Axios, Socket.IO Client
+- **Icons**: Lucide React
+
+### Backend & Database
+- **Server**: Node.js, Express
+- **Realtime**: Socket.IO
+- **ORM / Drivers**: Sequelize (supporting PostgreSQL & SQLite fallback)
+- **Database**: PostgreSQL (Primary) / SQLite (Local dev fallback)
+- **Authentication**: JWT & bcryptjs password hashing
+
+---
+
+## 3. Architecture Overview
+Refer to [docs/architecture_plan.md](docs/architecture_plan.md) and [docs/database-schema.md](docs/database-schema.md) for deeper design diagrams.
+- **Frontend** accesses Watsonx capabilities solely via backend endpoints (`/api/chat` and `/api/recommendations`), ensuring proper security and decoupling.
+- **Socket.IO** emits server-wide changes (e.g. `employeeUpdated`), triggering reactive re-renders in the frontend client state.
+
+---
+
+## 4. Development Phases
+1. **Phase 0**: Project Foundation, Architecture & Initial Setup (Completed)
+2. **Phase 1**: Database Models and Backend Foundation
+3. **Phase 2**: Authentication (Signup, Login, Middleware)
+4. **Phase 3**: Enterprise UI Shell (Sidebar, Topbar, Layout, Skeleton)
+5. **Phase 4**: Employee Pre-Joining
+6. **Phase 5**: Employee Post-Joining
+7. **Phase 6**: Admin Dashboard
+8. **Phase 7**: Real-Time Sync (Socket.IO integration)
+9. **Phase 8**: IBM watsonx Integration (Granite model & Watsonx Assistant API)
+10. **Phase 9**: Security & Polish
+11. **Phase 10**: Deployment
+12. **Phase 11**: Hackathon Submission
+
+---
+
+## 5. Getting Started (Placeholder)
 
 ### Prerequisites
+- Node.js (v18+)
+- SQLite (pre-installed for local dev) or PostgreSQL database instance
 
-- Node.js 18+
-- PostgreSQL 15+ (or skip — it falls back to SQLite automatically)
-- npm 9+
-
-### 1 — Backend
-
+### Quickstart Installation
+To clone and start the local development environment:
 ```bash
-cd server
-cp .env.example .env        # Fill in your values
-npm install
+# Clone the repository
+git clone <repository_url>
+cd IBM_Onboarding_tool
+
+# Copy environment template
+cp .env.example .env
+
+# Install all workspace dependencies
+npm run install:all
+
+# Run client & server concurrently in development mode
 npm run dev
 ```
-
-Server starts on `http://localhost:5000`.
-
-### 2 — Frontend
-
-```bash
-cd client
-npm install
-npm run dev
-```
-
-Client starts on `http://localhost:5173`.
-
-### 3 — Seed demo data
-
-```bash
-cd server
-npm run migrate   # create all tables
-npm run seed      # populate demo accounts
-```
-
-### 4 — Default Credentials
-
-| Role | Email | Password | Stage |
-|---|---|---|---|
-| Admin | admin@ibm.com | Admin123 | — |
-| Employee | aarav@ibm.com | Employee123 | PRE_JOINING |
-| Employee | priya@ibm.com | Employee123 | ORIENTATION |
-| Employee | rahul@ibm.com | Employee123 | FULLY_PRODUCTIVE |
-
----
-
-## Architecture
-
-See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the full system diagram, request lifecycle, and design decisions.
-
-See [`DATABASE.md`](./DATABASE.md) for the full entity-relationship model and SQL schema.
-
-See [`context.md`](./context.md) for the living project context (read before every change).
-
----
-
-## Project Structure
-
-```
-watsonx-challenge/
-├── client/          # React 18 + Vite frontend
-├── server/          # Node.js + Express backend
-├── shared/          # Shared constants (roles, stages, statuses)
-├── ARCHITECTURE.md
-├── DATABASE.md
-├── context.md       # Living project context
-└── README.md
-```
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | React 18, Vite, Tailwind CSS, Framer Motion |
-| Backend | Node.js, Express.js |
-| Auth | JWT + bcryptjs |
-| Database | PostgreSQL (primary) / SQLite (fallback) |
-| Real-time | Socket.IO |
-| AI | IBM watsonx Assistant + watsonx AI (Granite) |
-| Storage | Local disk → S3-compatible abstraction |
-
----
-
-## IBM watsonx Integration
-
-AI is fully abstracted behind `server/services/`:
-
-- **`watsonxAssistant.js`** — Chat intelligence (mock now → IBM watsonx Assistant API)
-- **`watsonxAI.js`** — Recommendations (rule-based now → IBM Granite foundation model)
-
-The frontend never calls IBM APIs directly. Swap the implementation inside the service files without changing any other code.
-
----
-
-## Development Phases
-
-| Phase | Title | Status |
-|---|---|---|
-| 0 | Foundation — architecture, DB plan, context | ✅ Done |
-| 1 | Backend — Express, DB, models, routes, seed | ✅ Done |
-| 2 | Frontend — Vite, Tailwind, router, layout, auth pages | ⏳ |
-| 3 | Employee Dashboard + Checklist + Documents | ⏳ |
-| 4 | Admin Dashboard + Employee Management | ⏳ |
-| 5 | AI Services + Chat UI | ⏳ |
-| 6 | Real-time (Socket.IO) | ⏳ |
-| 7 | Access Requests + Learning + Team | ⏳ |
-| 8 | Polish, Animations, Production Hardening | ⏳ |
-
----
-
-## Security
-
-- JWT authentication with role-based access control
-- bcrypt password hashing (saltRounds = 12)
-- Parameterised SQL queries (no raw string interpolation)
-- File type and size validation on every upload
-- CORS restricted to known origins
-
-> *"Documents are securely stored and accessible only to authorized users."*
-
----
-
-## License
-
-IBM Internal Hackathon Project — not for public distribution.

@@ -1,119 +1,114 @@
-/**
- * server/controllers/authController.js
- */
+const bcrypt = require('bcryptjs');
+const sequelize = require('../config/database');
+const User = require('../models/User');
+const Employee = require('../models/Employee');
+const { ROLES } = require('../utils/constants');
+const { generateToken } = require('../utils/jwt');
 
-const bcrypt  = require('bcryptjs');
-const jwt     = require('jsonwebtoken');
-const { validationResult } = require('express-validator');
-
-const User         = require('../models/User');
-const Employee     = require('../models/Employee');
-const ChecklistItem = require('../models/ChecklistItem');
-const {
-  ROLES,
-  BCRYPT_SALT_ROUNDS,
-  DEFAULT_CHECKLIST,
-  apiSuccess,
-  apiError,
-} = require('../config/constants');
-
-// ─── POST /api/auth/register ──────────────────────────────────────────────────
-async function register(req, res, next) {
+// User registration (Signup)
+exports.signup = async (req, res, next) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(422).json(apiError('Validation failed.', errors.array()));
+    const { name, email, password } = req.body;
+
+    // Validate request body
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, error: 'Name, email, and password are required.' });
     }
 
-    const { name, email, password, role = ROLES.EMPLOYEE, department, designation } = req.body;
-
-    // Prevent self-registration as admin
-    const safeRole = role === ROLES.ADMIN ? ROLES.EMPLOYEE : role;
-
-    const existing = await User.findByEmail(email);
-    if (existing) {
-      return res.status(409).json(apiError('An account with this email already exists.'));
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 6 characters long.' });
     }
 
-    const password_hash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-    const user          = await User.create({ name, email, password_hash, role: safeRole });
-
-    // Create employee profile for employee users
-    if (safeRole === ROLES.EMPLOYEE) {
-      const employee = await Employee.create({ user_id: user.id, department, designation });
-
-      // Seed default checklist
-      const checklistItems = DEFAULT_CHECKLIST.map(item => ({
-        ...item,
-        employee_id: employee.id,
-      }));
-      await ChecklistItem.bulkCreate(checklistItems);
+    // Check if user already exists
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ success: false, error: 'Email is already registered.' });
     }
 
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 10);
 
-    res.status(201).json(apiSuccess({ token, user }, 'Account created successfully.'));
-  } catch (err) {
-    next(err);
+    // Create user (default role is employee)
+    const user = await User.create({
+      name,
+      email,
+      password_hash: passwordHash,
+      role: ROLES.EMPLOYEE,
+    });
+
+    // Initialize employee profile
+    await Employee.create({
+      user_id: user.id,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Account created'
+    });
+  } catch (error) {
+    next(error);
   }
-}
+};
 
-// ─── POST /api/auth/login ─────────────────────────────────────────────────────
-async function login(req, res, next) {
+// User login
+exports.login = async (req, res, next) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(422).json(apiError('Validation failed.', errors.array()));
-    }
-
     const { email, password } = req.body;
 
-    const user = await User.findByEmail(email);
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: 'Email and password are required.' });
+    }
+
+    // Fetch user
+    const user = await User.findOne({ where: { email } });
+
     if (!user) {
-      return res.status(401).json(apiError('Invalid email or password.'));
+      return res.status(401).json({ success: false, error: 'Invalid email or password.' });
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.password_hash);
-    if (!passwordMatch) {
-      return res.status(401).json(apiError('Invalid email or password.'));
+    // Compare password hash
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    if (!isPasswordValid) {
+      return res.status(401).json({ success: false, error: 'Invalid email or password.' });
     }
 
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
+    // Generate JWT via helper
+    const token = generateToken(user);
 
-    // Strip password hash from response
-    const { password_hash: _pw, ...safeUser } = user;
-
-    res.json(apiSuccess({ token, user: safeUser }, 'Login successful.'));
-  } catch (err) {
-    next(err);
+    // Return response matching requirements
+    return res.status(200).json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    next(error);
   }
-}
+};
 
-// ─── GET /api/auth/me ─────────────────────────────────────────────────────────
-async function getMe(req, res, next) {
+// Fetch current user session details (Profile)
+exports.getCurrentUser = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findByPk(req.user.id);
+
     if (!user) {
-      return res.status(404).json(apiError('User not found.'));
+      return res.status(404).json({ success: false, error: 'User session not found.' });
     }
 
-    let employee = null;
-    if (user.role === ROLES.EMPLOYEE) {
-      employee = await Employee.findByUserId(user.id);
-    }
-
-    res.json(apiSuccess({ user, employee }));
-  } catch (err) {
-    next(err);
+    // Return details directly as in the spec example
+    return res.status(200).json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    });
+  } catch (error) {
+    next(error);
   }
-}
+};
 
-module.exports = { register, login, getMe };
+

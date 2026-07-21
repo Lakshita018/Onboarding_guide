@@ -1,65 +1,61 @@
-/**
- * server/models/AccessRequest.js
- */
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
+const Employee = require('./Employee');
+const User = require('./User');
+const { ACCESS_REQUEST_STATUS } = require('../utils/constants');
 
-const { query } = require('../config/database');
-
-const AccessRequest = {
-  async findByEmployeeId(employeeId) {
-    const { rows } = await query(
-      `SELECT ar.*, u.name AS approved_by_name
-       FROM access_requests ar
-       LEFT JOIN users u ON u.id = ar.approved_by
-       WHERE ar.employee_id = $1
-       ORDER BY ar.created_at DESC`,
-      [employeeId]
-    );
-    return rows;
+const AccessRequest = sequelize.define('AccessRequest', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true,
   },
-
-  async findById(id) {
-    const { rows } = await query(
-      `SELECT ar.*, u.name AS approved_by_name
-       FROM access_requests ar
-       LEFT JOIN users u ON u.id = ar.approved_by
-       WHERE ar.id = $1`,
-      [id]
-    );
-    return rows[0] || null;
+  employee_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: Employee,
+      key: 'id'
+    },
+    onDelete: 'CASCADE'
   },
-
-  async create({ employee_id, application_name, reason }) {
-    const { rows } = await query(
-      `INSERT INTO access_requests (employee_id, application_name, reason)
-       VALUES ($1, $2, $3)
-       RETURNING *`,
-      [employee_id, application_name, reason || null]
-    );
-    return rows[0];
+  application_name: {
+    type: DataTypes.STRING(100),
+    allowNull: false,
   },
-
-  async updateStatus(id, { status, approved_by }) {
-    const { rows } = await query(
-      `UPDATE access_requests
-       SET status = $1, approved_by = $2, reviewed_at = $3
-       WHERE id = $4
-       RETURNING *`,
-      [status, approved_by || null, new Date().toISOString(), id]
-    );
-    return rows[0] || null;
+  reason: {
+    type: DataTypes.TEXT,
+    allowNull: true,
   },
-
-  async findPending() {
-    const { rows } = await query(
-      `SELECT ar.*, u.name AS employee_name, e.department
-       FROM access_requests ar
-       JOIN employees e ON e.id = ar.employee_id
-       JOIN users u ON u.id = e.user_id
-       WHERE ar.status = 'pending'
-       ORDER BY ar.created_at ASC`
-    );
-    return rows;
+  status: {
+    type: DataTypes.STRING(20),
+    allowNull: false,
+    defaultValue: ACCESS_REQUEST_STATUS.PENDING,
+    validate: {
+      isIn: [[ACCESS_REQUEST_STATUS.PENDING, ACCESS_REQUEST_STATUS.APPROVED, ACCESS_REQUEST_STATUS.REJECTED]]
+    }
   },
-};
+  requested_at: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  approved_by: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: {
+      model: User,
+      key: 'id'
+    }
+  },
+}, {
+  tableName: 'access_requests',
+  timestamps: false,
+});
+
+Employee.hasMany(AccessRequest, { foreignKey: 'employee_id', onDelete: 'CASCADE' });
+AccessRequest.belongsTo(Employee, { foreignKey: 'employee_id' });
+User.hasMany(AccessRequest, { foreignKey: 'approved_by' });
+AccessRequest.belongsTo(User, { foreignKey: 'approved_by', as: 'approver' });
 
 module.exports = AccessRequest;

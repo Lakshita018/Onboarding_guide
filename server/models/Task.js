@@ -1,62 +1,65 @@
-/**
- * server/models/Task.js
- */
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
+const Employee = require('./Employee');
+const User = require('./User');
+const { TASK_STATUS } = require('../utils/constants');
 
-const { query } = require('../config/database');
-
-const Task = {
-  async findByEmployeeId(employeeId) {
-    const { rows } = await query(
-      `SELECT t.*, u.name AS assigned_by_name
-       FROM tasks t
-       JOIN users u ON u.id = t.assigned_by
-       WHERE t.employee_id = $1
-       ORDER BY t.created_at DESC`,
-      [employeeId]
-    );
-    return rows;
+const Task = sequelize.define('Task', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true,
   },
-
-  async findById(id) {
-    const { rows } = await query(
-      `SELECT t.*, u.name AS assigned_by_name
-       FROM tasks t
-       JOIN users u ON u.id = t.assigned_by
-       WHERE t.id = $1`,
-      [id]
-    );
-    return rows[0] || null;
+  employee_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: Employee,
+      key: 'id'
+    },
+    onDelete: 'CASCADE'
   },
-
-  async create({ employee_id, title, description, assigned_by, deadline }) {
-    const { rows } = await query(
-      `INSERT INTO tasks (employee_id, title, description, assigned_by, deadline)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [employee_id, title, description || null, assigned_by, deadline || null]
-    );
-    return rows[0];
+  title: {
+    type: DataTypes.STRING(255),
+    allowNull: false,
   },
-
-  async updateStatus(id, status) {
-    const { rows } = await query(
-      `UPDATE tasks SET status = $1, updated_at = $2 WHERE id = $3 RETURNING *`,
-      [status, new Date().toISOString(), id]
-    );
-    return rows[0] || null;
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true,
   },
-
-  async findAllForAdmin() {
-    const { rows } = await query(
-      `SELECT t.*, u.name AS employee_name, a.name AS assigned_by_name
-       FROM tasks t
-       JOIN employees e ON e.id = t.employee_id
-       JOIN users u ON u.id = e.user_id
-       JOIN users a ON a.id = t.assigned_by
-       ORDER BY t.created_at DESC`
-    );
-    return rows;
+  assigned_by: {
+    type: DataTypes.UUID,
+    allowNull: false,
+    references: {
+      model: User,
+      key: 'id'
+    }
   },
-};
+  status: {
+    type: DataTypes.STRING(20),
+    allowNull: false,
+    defaultValue: TASK_STATUS.PENDING,
+    validate: {
+      isIn: [[TASK_STATUS.PENDING, TASK_STATUS.IN_PROGRESS, TASK_STATUS.COMPLETED]]
+    }
+  },
+  deadline: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  created_at: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+}, {
+  tableName: 'tasks',
+  timestamps: false,
+});
+
+Employee.hasMany(Task, { foreignKey: 'employee_id', onDelete: 'CASCADE' });
+Task.belongsTo(Employee, { foreignKey: 'employee_id' });
+User.hasMany(Task, { foreignKey: 'assigned_by' });
+Task.belongsTo(User, { foreignKey: 'assigned_by', as: 'assigner' });
 
 module.exports = Task;

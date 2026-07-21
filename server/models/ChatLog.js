@@ -1,34 +1,45 @@
-/**
- * server/models/ChatLog.js
- */
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
+const Employee = require('./Employee');
+const { CHAT_SENDER } = require('../utils/constants');
 
-const { query } = require('../config/database');
-
-const ChatLog = {
-  async findByEmployeeId(employeeId, limit = 50) {
-    const { rows } = await query(
-      `SELECT * FROM chat_logs
-       WHERE employee_id = $1
-       ORDER BY timestamp ASC
-       LIMIT $2`,
-      [employeeId, limit]
-    );
-    return rows;
+const ChatLog = sequelize.define('ChatLog', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true,
   },
-
-  async create({ employee_id, sender, message, intent }) {
-    const { rows } = await query(
-      `INSERT INTO chat_logs (employee_id, sender, message, intent)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [employee_id, sender, message, intent || null]
-    );
-    return rows[0];
+  employee_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: Employee,
+      key: 'id'
+    },
+    onDelete: 'CASCADE'
   },
-
-  async clearByEmployeeId(employeeId) {
-    await query('DELETE FROM chat_logs WHERE employee_id = $1', [employeeId]);
+  sender: {
+    type: DataTypes.STRING(20),
+    allowNull: false,
+    validate: {
+      isIn: [[CHAT_SENDER.EMPLOYEE, CHAT_SENDER.ASSISTANT]]
+    }
   },
-};
+  message: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  timestamp: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+}, {
+  tableName: 'chat_logs',
+  timestamps: false,
+});
+
+Employee.hasMany(ChatLog, { foreignKey: 'employee_id', onDelete: 'CASCADE' });
+ChatLog.belongsTo(Employee, { foreignKey: 'employee_id' });
 
 module.exports = ChatLog;
