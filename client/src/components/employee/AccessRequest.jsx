@@ -6,11 +6,10 @@ import Badge from '../common/Badge';
 import Button from '../common/Button';
 
 const APPLICATIONS = [
-  { name: 'Slack', desc: 'Enterprise chat communication channels' },
-  { name: 'Microsoft Teams', desc: 'Video conferences and business calls' },
-  { name: 'GitHub Enterprise', desc: 'Developer source repositories' },
-  { name: 'Jira Software', desc: 'Task coordination tracking system' },
-  { name: 'IBM Cloud Portal', desc: 'Cloud virtualization console access' },
+  { name: 'Slack',              desc: 'Enterprise chat communication channels' },
+  { name: 'BOB',                desc: 'IBM AI assistant for internal productivity' },
+  { name: 'GitHub Enterprise',  desc: 'Developer source repositories' },
+  { name: 'IBM Cloud Portal',   desc: 'Cloud virtualization console access' },
 ];
 
 const AccessRequest = ({ requests = [], onRequest, onOpenNewRequest }) => {
