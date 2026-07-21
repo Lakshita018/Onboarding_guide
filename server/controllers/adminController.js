@@ -53,13 +53,16 @@ exports.getAllEmployees = async (req, res, next) => {
   try {
     const employees = await Employees.findAll();
 
-    // Enrich each employee with user info
-    const enriched = await Promise.all(
-      employees.map(async (emp) => {
-        const user = await Users.findById(emp.user_id);
-        return { ...emp, User: user };
-      })
-    );
+    // Enrich each employee with user info — skip orphan records
+    const enriched = (await Promise.all(
+      employees
+        .filter(emp => emp.user_id)
+        .map(async (emp) => {
+          const user = await Users.findById(emp.user_id);
+          if (!user) return null;
+          return { ...emp, User: user };
+        })
+    )).filter(Boolean);
 
     return res.status(200).json({ success: true, employees: enriched });
   } catch (error) {
@@ -87,7 +90,14 @@ exports.getEmployeeDetail = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      employee: { ...employee, User: user, Documents: documents, ChecklistItems: checklist, Tasks: tasks, AccessRequests: accessRequests },
+      employee: {
+        ...employee,
+        User:           user,
+        Documents:      documents.filter(d => d.document_type),
+        ChecklistItems: checklist,
+        Tasks:          tasks,
+        AccessRequests: accessRequests,
+      },
     });
   } catch (error) {
     next(error);
@@ -169,8 +179,8 @@ exports.assignTask = async (req, res, next) => {
 // ─── VERIFY DOCUMENT ──────────────────────────────────────────
 exports.verifyDocument = async (req, res, next) => {
   try {
-    const { id }     = req.params;
-    const { status } = req.body;
+    const { id }                      = req.params;
+    const { status, review_comment }  = req.body;
 
     const allowed = [DOCUMENT_STATUS.VERIFIED, DOCUMENT_STATUS.REJECTED];
     if (!status || !allowed.includes(status)) {
@@ -185,7 +195,11 @@ exports.verifyDocument = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Document not found.' });
     }
 
-    const updated = await Documents.update(id, { verification_status: status });
+    const updated = await Documents.update(id, {
+      verification_status: status,
+      review_comment: review_comment || null,
+      reviewed_at: new Date().toISOString(),
+    });
 
     // Real-time notification
     try {
@@ -251,14 +265,16 @@ exports.getAllDocuments = async (req, res, next) => {
   try {
     const documents = await Documents.findAll();
 
-    // Enrich with employee + user info
-    const enriched = await Promise.all(
-      documents.map(async (doc) => {
-        const employee = await Employees.findById(doc.employee_id);
-        const user     = employee ? await Users.findById(employee.user_id) : null;
-        return { ...doc, Employee: { ...employee, User: user } };
-      })
-    );
+    // Enrich with employee + user info — skip orphans
+    const enriched = (await Promise.all(
+      documents
+        .filter(doc => doc.employee_id && doc.document_type)
+        .map(async (doc) => {
+          const employee = await Employees.findById(doc.employee_id);
+          const user     = employee ? await Users.findById(employee.user_id) : null;
+          return { ...doc, Employee: { ...employee, User: user } };
+        })
+    )).filter(Boolean);
 
     return res.status(200).json({ success: true, documents: enriched });
   } catch (error) {
@@ -271,13 +287,15 @@ exports.getAllTasks = async (req, res, next) => {
   try {
     const tasks = await Tasks.findAll();
 
-    const enriched = await Promise.all(
-      tasks.map(async (task) => {
-        const employee = await Employees.findById(task.employee_id);
-        const user     = employee ? await Users.findById(employee.user_id) : null;
-        return { ...task, Employee: { ...employee, User: user } };
-      })
-    );
+    const enriched = (await Promise.all(
+      tasks
+        .filter(task => task.employee_id)
+        .map(async (task) => {
+          const employee = await Employees.findById(task.employee_id);
+          const user     = employee ? await Users.findById(employee.user_id) : null;
+          return { ...task, Employee: { ...employee, User: user } };
+        })
+    )).filter(Boolean);
 
     return res.status(200).json({ success: true, tasks: enriched });
   } catch (error) {

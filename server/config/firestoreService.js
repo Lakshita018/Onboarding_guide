@@ -146,6 +146,17 @@ const Documents = {
     return arr;
   },
 
+  async findByEmployeeIdAndType(employeeId, document_type) {
+    const snap = await Documents.col()
+      .where('employee_id', '==', employeeId)
+      .where('document_type', '==', document_type)
+      .limit(1)
+      .get();
+    if (snap.empty) return null;
+    const d = snap.docs[0];
+    return { id: d.id, ...serializeTimestamps(d.data()) };
+  },
+
   async findAll() {
     const snap = await Documents.col().get();
     const arr = snapToArray(snap);

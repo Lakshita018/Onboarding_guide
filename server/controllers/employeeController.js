@@ -6,7 +6,7 @@
 const streamifier = require('streamifier');
 const cloudinary   = require('../config/cloudinary');
 const {
-  Users, Employees, Documents, ChecklistItems, AccessRequests,
+  Users, Employees, Documents, ChecklistItems, AccessRequests, Tasks,
 } = require('../config/firestoreService');
 const { generateRecommendations } = require('../services/watsonxAI');
 const {
@@ -92,15 +92,30 @@ exports.uploadDocument = async (req, res, next) => {
     // Upload file buffer to Cloudinary
     const cloudResult = await uploadToCloudinary(req.file.buffer, req.file.originalname);
 
-    // Store metadata in Firestore
-    const doc = await Documents.create({
-      employee_id:           employee.id,
-      document_name:         req.file.originalname,
-      document_type,
-      cloudinary_url:        cloudResult.secure_url,
-      cloudinary_public_id:  cloudResult.public_id,
-      verification_status:   DOCUMENT_STATUS.PENDING,
-    });
+    // Check for existing document of same type — replace if exists
+    const existing = await Documents.findByEmployeeIdAndType(employee.id, document_type);
+
+    let doc;
+    if (existing) {
+      doc = await Documents.update(existing.id, {
+        document_name:        req.file.originalname,
+        cloudinary_url:       cloudResult.secure_url,
+        cloudinary_public_id: cloudResult.public_id,
+        verification_status:  DOCUMENT_STATUS.PENDING,
+        review_comment:       null,
+        reviewed_at:          null,
+        created_at:           new Date().toISOString(),
+      });
+    } else {
+      doc = await Documents.create({
+        employee_id:           employee.id,
+        document_name:         req.file.originalname,
+        document_type,
+        cloudinary_url:        cloudResult.secure_url,
+        cloudinary_public_id:  cloudResult.public_id,
+        verification_status:   DOCUMENT_STATUS.PENDING,
+      });
+    }
 
     return res.status(201).json({
       success: true,
@@ -302,3 +317,18 @@ exports.getRecommendations = async (req, res, next) => {
     next(error);
   }
 };
+
+// ─── GET TASKS ─────────────────────────────────────────────────
+exports.getTasks = async (req, res, next) => {
+  try {
+    const employee = await Employees.findByUserId(req.user.id);
+    if (!employee) {
+      return res.status(404).json({ success: false, error: 'Employee not found.' });
+    }
+    const tasks = await Tasks.findByEmployeeId(employee.id);
+    return res.status(200).json({ success: true, tasks });
+  } catch (error) {
+    next(error);
+  }
+};
+

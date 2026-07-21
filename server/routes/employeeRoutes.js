@@ -11,6 +11,9 @@ router.use(authMiddleware, roleMiddleware('employee'));
 // Profile
 router.get('/profile', employeeController.getProfile);
 
+// Tasks
+router.get('/tasks', employeeController.getTasks);
+
 // Documents
 router.post('/documents/upload', uploadMiddleware.single('file'), employeeController.uploadDocument);
 router.post('/upload', uploadMiddleware.single('document'), employeeController.uploadDocument); // legacy alias

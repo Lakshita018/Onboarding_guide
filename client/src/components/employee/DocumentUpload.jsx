@@ -10,7 +10,7 @@ const DOCUMENT_TYPES = [
   { value: 'offer_letter', label: 'Signed Offer Letter', desc: 'IBM offer letter with your signature' },
 ];
 
-const DocumentUpload = ({ onUploadSuccess }) => {
+const DocumentUpload = ({ onUploadSuccess, existingDocuments = [] }) => {
   const [selectedType, setSelectedType] = useState('');
   const [file, setFile] = useState(null);
   const [dragOver, setDragOver] = useState(false);
@@ -73,22 +73,32 @@ const DocumentUpload = ({ onUploadSuccess }) => {
           Select Document Type
         </p>
         <div className="grid grid-cols-1 gap-2">
-          {DOCUMENT_TYPES.map((type) => (
-            <button
-              key={type.value}
-              onClick={() => setSelectedType(type.value)}
-              className={`w-full text-left px-4 py-3 rounded-sm border transition-all ${
-                selectedType === type.value
-                  ? 'border-[#0F62FE] bg-[#EDF4FF]'
-                  : 'border-[#E0E0E0] bg-white hover:border-[#8D8D8D]'
-              }`}
-            >
-              <p className={`text-sm font-medium ${selectedType === type.value ? 'text-[#0F62FE]' : 'text-[#161616]'}`}>
-                {type.label}
-              </p>
-              <p className="text-xs text-[#8D8D8D] mt-0.5">{type.desc}</p>
-            </button>
-          ))}
+          {DOCUMENT_TYPES.map((type) => {
+            const alreadyUploaded = existingDocuments.some(d => d.document_type === type.value);
+            return (
+              <button
+                key={type.value}
+                onClick={() => setSelectedType(type.value)}
+                className={`w-full text-left px-4 py-3 rounded-sm border transition-all ${
+                  selectedType === type.value
+                    ? 'border-[#0F62FE] bg-[#EDF4FF]'
+                    : 'border-[#E0E0E0] bg-white hover:border-[#8D8D8D]'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <p className={`text-sm font-medium ${selectedType === type.value ? 'text-[#0F62FE]' : 'text-[#161616]'}`}>
+                    {type.label}
+                  </p>
+                  {alreadyUploaded && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-[#FFF8E1] text-[#8A6914] border border-[#F1C21B] rounded-sm">
+                      REPLACE
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-[#8D8D8D] mt-0.5">{type.desc}</p>
+              </button>
+            );
+          })}
         </div>
       </div>
 
